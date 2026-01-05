@@ -1,0 +1,3 @@
+vehicle_id,registration,roadworthy_expiry,dg_expiry,status
+V001,ABC123GP,2026-11-30,2026-07-15,COMPLIANT
+V002,XYZ456MP,2025-12-01,2026-03-20,LOCKED
