@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Compliance Expiring This Month</h2>
+
+<table class="compliance-table">
+  <thead>
+    <tr>
+      <th>Truck</th>
+      <th>Document</th>
+      <th>Expiry Date</th>
+      <th>Days Remaining</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in records %}
+    <tr class="status-{{ r.color }}">
+      <td>{{ r.truck_reg }}</td>
+      <td>{{ r.doc_type }}</td>
+      <td>{{ r.expiry_date }}</td>
+      <td>{{ r.days_remaining }}</td>
+      <td>
+        <span class="badge badge-{{ r.color }}">
+          {{ r.status }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

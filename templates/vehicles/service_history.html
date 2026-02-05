@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page">
+  <h2><strong>Service History — {{ truck_reg }}</strong></h2>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-container">
+      {% for category, message in messages %}
+        <div class="flash-message {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- ================= SERVICE TABLE ================= -->
+  <div class="table-wrapper">
+    <table class="data-table" border="1" cellpadding="8">
+      <thead>
+        <tr>
+          <th>Service Date</th>
+          <th>KM at Service</th>
+          <th>Target KM</th>
+          <th>KM Difference</th>
+          <th>Service Place</th>
+          <th>Service Type</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in services %}
+        <tr>
+          <td>{{ s.service_date }}</td>
+          <td>{{ s.km_at_service }}</td>
+          <td>{{ s.service_target_km }}</td>
+          <td class="
+              {% if s.km_difference|int < 0 %}text-danger
+              {% elif s.km_difference|int > 0 %}text-warning
+              {% else %}text-success
+              {% endif %}
+          ">
+            {{ s.km_difference }}
+          </td>
+          <td>{{ s.service_place }}</td>
+          <td>{{ s.service_type }}</td>
+          <td>{{ s.notes }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center">No service records yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ================= ADD SERVICE FORM ================= -->
+  <h3 style="margin-top: 30px;">Add Service Record</h3>
+
+  <form method="POST">
+    <div class="form-grid">
+
+      <div>
+        <label>Service Date</label>
+        <input type="date" name="service_date" required>
+      </div>
+
+      <div>
+        <label>KM at Service</label>
+        <input type="number" name="km_at_service" required>
+      </div>
+
+      <div>
+        <label>Service Target KM</label>
+        <input type="number" name="service_target_km" placeholder="e.g. 40000 or 80000" required>
+      </div>
+
+      <div>
+        <label>Service Place</label>
+        <input type="text" name="service_place" required>
+      </div>
+
+      <div>
+        <label>Service Type</label>
+        <select name="service_type">
+          <option value="Minor">Minor</option>
+          <option value="Major">Major</option>
+          <option value="Breakdown">Breakdown</option>
+          <option value="Adhoc">Adhoc</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Notes</label>
+        <input type="text" name="notes" placeholder="Optional notes">
+      </div>
+
+      <input type="hidden" name="truck_reg" value="{{ truck_reg }}">
+
+      <div style="grid-column: span 2;">
+        <button type="submit" class="btn btn-success">➕ Add Service Record</button>
+      </div>
+
+    </div>
+  </form>
+
+</div>
+
+{% endblock %}

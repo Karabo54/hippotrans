@@ -1,4 +1,0 @@
-trip_id,date,truck_id,driver_id,fuel_type,quantity_liters,origin,destination,status
-T001,2026-01-05,TRK01,D001,Diesel,500,Engen Wentworth,Hamilton P2P,LOADED
-T002,2026-01-05,TRK02,D002,Petrol,300,Engen Wentworth,Waltloo,LOADED
-T003,2026-01-05,TRK03,D003,IK,450,Engen Wentworth,Nelspruit,LOADED

@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="dashboard-header">
+  <div>
+    <h5>Welcome to SMS Fuel PTY LTD 👋</h5>
+  </div>
+  <div class="dashboard-datetime">
+    <p id="date-time"></p>
+  </div>
+</div>
+
+<h1>Dashboard</h1>
+
+<div class="dashboard-cards">
+
+  <div class="card">
+    <div class="card-icon blue-bg">🚛</div>
+    <div class="card-content">
+      <p class="card-label">Total Vehicles</p>
+      <h3 class="card-value blue-text">{{ stats.total_vehicles }}</h3>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-icon green-bg">✅</div>
+    <div class="card-content">
+      <p class="card-label">Active Vehicles</p>
+      <h3 class="card-value green-text">{{ stats.active_vehicles }}</h3>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-icon purple-bg">📦</div>
+    <div class="card-content">
+      <p class="card-label">Total Trips</p>
+      <h3 class="card-value grey-text">{{ stats.total_trips }}</h3>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-icon red-bg">🛑</div>
+    <div class="card-content">
+      <p class="card-label">Open Breakdowns</p>
+      <h3 class="card-value orange-text">{{ stats.open_breakdowns }}</h3>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-icon red-bg">📄</div>
+    <div class="card-content">
+      <p class="card-label">Expired Docs</p>
+      <h3 class="card-value red-text">{{ stats.expired_docs_count }}</h3>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-icon yellow-bg">⏳</div>
+    <div class="card-content">
+      <p class="card-label">Docs Almost Due</p>
+      <h3 class="card-value orange-text">{{ stats.almost_due_docs_count }}</h3>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-icon blue-bg">⛽</div>
+    <div class="card-content">
+      <p class="card-label">Total Fuel (L)</p>
+      <h3 class="card-value blue-text">{{ stats.total_fuel }}</h3>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-icon green-bg">💰</div>
+    <div class="card-content">
+      <p class="card-label">Fuel Cost</p>
+      <h3 class="card-value green-text">R {{ stats.fuel_cost }}</h3>
+    </div>
+  </div>
+</div>
+
+<div class="alerts-grid">
+
+  <div class="alert-card danger">
+    <h4>🚨 Expired Compliance</h4>
+    {% if expired_docs %}
+      <ul>
+        {% for doc in expired_docs %}
+          <li>{{ doc.truck_reg }} – {{ doc.doc_type }} ({{ doc.expiry_date }})</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No expired documents 🎉</p>
+    {% endif %}
+  </div>
+
+  <div class="alert-card warning">
+    <h4>⏳ Almost Due</h4>
+    {% if almost_due_docs %}
+      <ul>
+        {% for doc in almost_due_docs %}
+          <li>{{ doc.truck_reg }} – {{ doc.doc_type }} ({{ doc.days_left }} days left)</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No documents nearing expiry ✅</p>
+    {% endif %}
+  </div>
+
+  <div class="alert-card info">
+    <h4>🛠 Open Breakdowns</h4>
+    {% if open_breakdowns %}
+      <ul>
+        {% for b in open_breakdowns %}
+          <li>{{ b.truck_reg }} – {{ b.issue }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No active breakdowns 🚛</p>
+    {% endif %}
+  </div>
+
+</div>
+
+<div class="analytics-grid">
+
+  <div class="chart-card">
+    <h4>Trips Per Month</h4>
+    <canvas id="tripsChart"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <h4>Fuel Usage Per Truck</h4>
+    <canvas id="fuelChart"></canvas>
+  </div>
+
+</div>
+
+<!-- ===== Data from Flask ===== -->
+<script>
+  const tripsByMonth = {{ trips_by_month | tojson }};
+  const fuelByTruck = {{ fuel_by_truck | tojson }};
+</script>
+
+<!-- ===== Dashboard Logic ===== -->
+<script>
+  // ===== Live Date & Time =====
+  function updateDateTime() {
+    const now = new Date();
+    const options = {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    };
+    document.getElementById("date-time").innerText = now.toLocaleString('en-ZA', options);
+  }
+  setInterval(updateDateTime, 1000);
+  updateDateTime();
+
+  // ===== Prepare Chart Data =====
+  const tripsLabels = Object.keys(tripsByMonth);
+  const tripsData = Object.values(tripsByMonth);
+
+  const fuelLabels = Object.keys(fuelByTruck);
+  const fuelData = Object.values(fuelByTruck);
+
+  // ===== Charts =====
+  const tripsCtx = document.getElementById('tripsChart').getContext('2d');
+  new Chart(tripsCtx, {
+    type: 'bar',
+    data: {
+      labels: tripsLabels,
+      datasets: [{
+        label: 'Trips per Month',
+        data: tripsData,
+      }]
+    }
+  });
+
+  const fuelCtx = document.getElementById('fuelChart').getContext('2d');
+  new Chart(fuelCtx, {
+    type: 'bar',
+    data: {
+      labels: fuelLabels,
+      datasets: [{
+        label: 'Fuel Used (Litres)',
+        data: fuelData,
+      }]
+    }
+  });
+</script>
+
+{% endblock %}

@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page">
+  <h2><strong>Vehicles</strong></h2>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- ================= DASHBOARD CARDS ================= -->
+  <div class="dashboard-cards">
+
+    <div class="card">
+      <div class="card-icon blue-bg">
+        <!-- SVG -->
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+             xmlns="http://www.w3.org/2000/svg">
+          <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5H6.5C5.84 5 5.29 5.42 5.08 6.01L3 12V20C3 20.55 3.45 21 4 21H5C5.55 21 6 20.55 6 20V19H18V20C18 20.55 18.45 21 19 21H20C20.55 21 21 20.55 21 20V12L18.92 6.01ZM6.5 7H17.5L18.89 11H5.11L6.5 7ZM5 17C3.9 17 3 16.1 3 15C3 13.9 3.9 13 5 13C6.1 13 7 13.9 7 15C7 16.1 6.1 17 5 17ZM19 17C17.9 17 17 16.1 17 15C17 13.9 17.9 13 19 13C20.1 13 21 13.9 21 15C21 16.1 20.1 17 19 17Z"
+                fill="#3182ce"/>
+        </svg>
+      </div>
+      <div class="card-content">
+        <p class="card-label">Total Vehicles</p>
+        <h2 class="card-value blue-text">{{ vehicles|length }}</h2>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon yellow-bg">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+             xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 8H17V4H3C1.9 4 1 4.9 1 6V17H3C3 18.66 4.34 20 6 20C7.66 20 9 18.66 9 17H15C15 18.66 16.34 20 18 20C19.66 20 21 18.66 21 17H23V12L20 8ZM6 18C5.45 18 5 17.55 5 17C5 16.45 5.45 16 6 16C6.55 16 7 16.45 7 17C7 17.55 6.55 18 6 18ZM18 18C17.45 18 17 17.55 17 17C17 16.45 17.45 16 18 16C18.55 16 19 16.45 19 17C19 17.55 18.55 18 18 18ZM17 10H19.33L21 12.25V13H17V10Z"
+                fill="#D97706"/>
+        </svg>
+      </div>
+      <div class="card-content">
+        <p class="card-label">Active Vehicles</p>
+        <h2 class="card-value green-text">
+          {{ vehicles | selectattr("service_status", "equalto", "OK") | list | length }}
+        </h2>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon orange-bg">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+             xmlns="http://www.w3.org/2000/svg">
+          <path d="M22 13V15H19V11.23L15.35 9H11V15H9V8C9 6.9 8.1 6 7 6H4V15H2V17H4.18C4.6 18.17 5.7 19 7 19C8.3 19 9.4 18.17 9.82 17H14.18C14.6 18.17 15.7 19 17 19C18.3 19 19.4 18.17 19.82 17H22V15H20V13H22ZM7 17.5C6.17 17.5 5.5 16.83 5.5 16C5.5 15.17 6.17 14.5 7 14.5C7.83 14.5 8.5 15.17 8.5 16C8.5 16.83 7.83 17.5 7 17.5ZM17 17.5C16.17 17.5 15.5 16.83 15.5 16C15.5 15.17 16.17 14.5 17 14.5C17.83 14.5 18.5 15.17 18.5 16C18.5 16.83 17.83 17.5 17 17.5Z"
+                fill="#EA580C"/>
+        </svg>
+      </div>
+      <div class="card-content">
+        <p class="card-label">Service Due Soon</p>
+        <h2 class="card-value orange-text">
+          {{ vehicles | selectattr("service_status", "equalto", "DUE") | list | length }}
+        </h2>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon red-bg">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+             xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 15V13H15V10H18L19 7H11V15H9.82C9.4 13.83 8.3 13 7 13C5.7 13 4.6 13.83 4.18 15H2V17H4.18C4.6 18.17 5.7 19 7 19C8.3 19 9.4 18.17 9.82 17H14.18C14.6 19.34 16.66 21 19 21C21.34 21 23.4 19.34 23.82 17H24V15H19ZM7 17.5C6.17 17.5 5.5 16.83 5.5 16C5.5 15.17 6.17 14.5 7 14.5C7.83 14.5 8.5 15.17 8.5 16C8.5 16.83 7.83 17.5 7 17.5ZM19 19.5C17.62 19.5 16.5 18.38 16.5 17C16.5 15.62 17.62 14.5 19 14.5C20.38 14.5 21.5 15.62 21.5 17C21.5 18.38 20.38 19.5 19 19.5Z"
+                fill="#DC2626"/>
+        </svg>
+      </div>
+      <div class="card-content">
+        <p class="card-label">Overdue for Service</p>
+        <h2 class="card-value grey-text">
+          {{ vehicles | selectattr("service_status", "equalto", "OVERDUE") | list | length }}
+        </h2>
+      </div>
+    </div>
+
+  </div>
+  <!-- =============== END DASHBOARD CARDS =============== -->
+
+  <!-- ================= VEHICLES TABLE ================= -->
+  <div class="table-wrapper">
+    <table class="data-table" border="1" cellpadding="8">
+      <thead>
+        <tr>
+          <th>Truck Reg</th>
+          <th>Truck Type</th>
+          <th>Truck VIN</th>
+          <th>Trailer Reg</th>
+          <th>Trailer Type</th>
+          <th>PTO</th>
+          <th>Trailer VIN</th>
+          <th>Driver</th>
+          <th>Current KM</th>
+          <th>Last KM Update</th>
+          <th>Update KM</th>
+          <th>Service Status</th>
+          <th>KM to Service</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for vehicle in vehicles %}
+        <tr class="
+          {% if vehicle.km_due_warning %}km-warning{% endif %}
+          {% if vehicle.service_status == 'OVERDUE' %}service-overdue{% elif vehicle.service_status == 'DUE' %}service-due{% elif vehicle.service_status == 'OK' %}service-ok{% endif %}
+        ">
+          <td>{{ vehicle.truck_reg }}</td>
+          <td>{{ vehicle.truck_type }}</td>
+          <td>{{ vehicle.truck_vin }}</td>
+          <td>{{ vehicle.trailer_reg }}</td>
+          <td>{{ vehicle.trailer_type }}</td>
+          <td>{{ vehicle.pto_avail }}</td>
+          <td>{{ vehicle.trailer_vin }}</td>
+          <td>{{ vehicle.driver }}</td>
+          <td>{{ vehicle.current_km or 0 }}</td>
+          <td>{{ vehicle.last_km_update or "Never" }}</td>
+
+          <td>
+            <form method="POST" action="/vehicles/update_km/{{ vehicle.truck_reg }}" style="display:flex; gap:5px;">
+              <input type="number" name="new_km" min="{{ vehicle.current_km or 0 }}" placeholder="New KM" required>
+              <button type="submit">💾</button>
+            </form>
+          </td>
+
+          <td>
+            {% if vehicle.service_status == "OVERDUE" %}
+              🔴 OVERDUE
+            {% elif vehicle.service_status == "DUE" %}
+              🟠 DUE
+            {% else %}
+              🟢 OK
+            {% endif %}
+          </td>
+
+          <td>{{ vehicle.km_to_service }}</td>
+          <td><button><a href="{{ url_for('vehicle_service_history', truck_reg=vehicle.truck_reg) }}" class="btn btn-sm btn-secondary">
+  🛠 Service History</a>
+</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+   <h3>FLEET SUMMARY</h3>
+        <!-- SUMMARY CARDS SECTION -->
+      <div class="summary-cards">
+
+        <!-- 1. Safety & Compliance -->
+        <div class="summary-card alert-border">
+          <h3>Safety & Compliance</h3>
+          <div class="card-body">
+            <div class="stat-row"><span>Expired Documents</span> <span class="stat-val badge-red">{{ summary.expired_docs }}</span></div>
+            <div class="stat-row"><span>Upcoming Inspections</span> <span class="stat-val badge-orange">{{ summary.upcoming_inspections }}</span></div>
+            <p class="status-msg">Action required on {{ summary.expired_docs }} units</p>
+          </div>
+        </div>
+
+        <!-- 2. Service & Maintenance -->
+        <div class="summary-card warning-border">
+          <h3>Service & Maintenance</h3>
+          <div class="card-body">
+            <div class="stat-row"><span>Service Overdue</span> <span class="stat-val badge-red">{{ summary.service_overdue }}</span></div>
+            <div class="stat-row"><span>Service Due Soon</span> <span class="stat-val badge-orange">{{ summary.service_due }}</span></div>
+            <p class="status-msg">{{ summary.service_overdue }} vehicles require urgent service</p>
+          </div>
+        </div>
+
+        <!-- 3. Driver Assignments -->
+        <div class="summary-card info-border">
+          <h3>Driver Assignments</h3>
+          <div class="card-body">
+            <div class="stat-row"><span>Assigned Vehicles</span> <span class="stat-val badge-green">{{ summary.assigned }}</span></div>
+            <div class="stat-row"><span>Unassigned Vehicles</span> <span class="stat-val badge-grey">{{ summary.unassigned }}</span></div>
+            <p class="status-msg">{{ summary.unassigned }} vehicles without drivers</p>
+          </div>
+        </div>
+
+        <!-- 4. KM Updates -->
+        <div class="summary-card neutral-border">
+          <h3>KM Updates</h3>
+          <div class="card-body">
+            <div class="stat-row"><span>Updated This Week</span> <span class="stat-val badge-green">{{ summary.km_updated }}</span></div>
+            <div class="stat-row"><span>Missing Updates</span> <span class="stat-val badge-red">{{ summary.km_missing }}</span></div>
+            <p class="status-msg">{{ summary.km_missing }} vehicles need KM update</p>
+          </div>
+        </div>
+
+        <!-- 5. Fleet Utilization -->
+        <div class="summary-card success-border">
+          <h3>Fleet Utilization</h3>
+          <div class="card-body">
+            <div class="stat-row"><span>Active Units</span> <span class="stat-val badge-green">{{ summary.assigned }}</span></div>
+            <div class="stat-row"><span>Idle Units</span> <span class="stat-val badge-grey">{{ summary.unassigned }}</span></div>
+            <p class="status-msg">{{ summary.utilization_percent }}% fleet utilization</p>
+          </div>
+        </div>
+
+        <!-- 6. Trailer Overview -->
+        <div class="summary-card purple-border">
+          <h3>Trailer Overview</h3>
+          <div class="card-body">
+            <div class="stat-row"><span>Total Trailers</span> <span class="stat-val badge-blue">{{ summary.total_trailers }}</span></div>
+            <div class="stat-row"><span>With PTO</span> <span class="stat-val badge-green">{{ summary.trailers_with_pto }}</span></div>
+            <p class="status-msg">{{ summary.trailers_with_pto }} trailers PTO-ready</p>
+          </div>
+        </div>
+
+      </div>
+
+</div>
+</div>
+
+<script>
+  setTimeout(() => {
+    document.querySelectorAll(".flash-message").forEach(msg => {
+      msg.style.opacity = "0";
+      setTimeout(() => msg.remove(), 500);
+    });
+  }, 3000);
+</script>
+
+<style>
+  .table-wrapper {
+    max-height: 65vh;
+    overflow-y: auto;
+    border-radius: 10px;
+  }
+
+  .km-warning {
+    background-color: #fffbea;
+  }
+
+  .service-due {
+    background-color: #ffe5b4;
+  }
+
+  .service-overdue {
+    background-color: #f8d7da;
+  }
+  .service-ok {
+    background-color: white;
+  }
+
+</style>
+
+{% endblock %}

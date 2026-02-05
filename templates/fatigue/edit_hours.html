@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>✏ Edit Driver Working Hours</h2>
+
+<form method="POST">
+  <div class="form-grid">
+    <input type="date" name="date" value="{{ entry.date }}" required>
+    <input type="text" name="driver_name" value="{{ entry.driver_name }}" required>
+    <select name="off_day">
+      <option value="no" {% if entry.off_day == "no" %}selected{% endif %}>Working Day</option>
+      <option value="yes" {% if entry.off_day == "yes" %}selected{% endif %}>Off Day</option>
+    </select>
+    <input type="time" name="start_time" value="{{ entry.start_time }}">
+    <input type="time" name="end_time" value="{{ entry.end_time }}">
+    <textarea name="after_hours_reason">{{ entry.after_hours_reason }}</textarea>
+    <button type="submit">💾 Save Changes</button>
+    <a href="{{ url_for('fatigue_hours') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+
+{% endblock %}

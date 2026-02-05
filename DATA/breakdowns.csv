@@ -1,0 +1,3 @@
+breakdown_id,truck_reg,driver,location,issue_description,reported_date,reported_time,km_at_breakdown,status,repair_start_date,repair_end_date,downtime_hours,repair_cost,workshop,notes
+BD00001,HXW402FS,,Camperdown,Fuel leak on a valve in API cabin,2026-01-28,08:17,474815,REPAIRED,,2026-01-30 12:02,51.75,,,
+BD00002,HMZ106FS,,COMO DURBAN,AIRBAG BURST ON THE TRAILER LHS middle axle,2026-01-31,07:00,801865,REPAIRED,,2026-02-02 11:51,52.85,,,

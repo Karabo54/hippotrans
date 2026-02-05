@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page">
+      <h2>Fleet List</h2>
+
+      <table class="data-table" border="1" cellpadding="8">
+        <thead>
+          <tr>
+            <th>Truck Registration</th>
+            <th>Truck Type</th>
+            <th>Truck Vin Number</th>
+            <th>Trailer Registration</th>
+            <th>Trailer Type</th>
+            <th>PTO AVAILABLE</th>
+            <th>Trailer Vin Number</th>
+            <th>Driver Assigned</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for list in list %}
+          <tr>
+            <td>{{ list.truck_reg }}</td>
+            <td>{{ list.truck_type }}</td>
+            <td>{{ list.truck_vin }}</td>
+            <td>{{ list.trailer_reg }}</td>
+            <td>{{ list.trailer_type }}</td>
+            <td>{{ list.pto_avail }}</td>
+            <td>{{ list.trailer_vin }}</td>
+            <td>{{ list.driver }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+</div>
+{% endblock %}

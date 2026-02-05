@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page">
+  <h2><strong>Trips</strong></h2>
+
+  <!-- ================= FLASH MESSAGES ================= -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-container">
+      {% for category, message in messages %}
+        <div class="flash-message {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- Auto-hide flash messages -->
+  <script>
+    setTimeout(() => {
+      document.querySelectorAll(".flash-message").forEach(msg => {
+        msg.style.opacity = "0";
+        setTimeout(() => msg.remove(), 500);
+      });
+    }, 3000);
+  </script>
+
+  <!-- ================= MONTH TAB LOGIC ================= -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const currentMonth = document.querySelector(".tab-btn.active")?.innerText;
+      if (currentMonth) {
+        openMonth(currentMonth);
+        scrollTableToBottom(currentMonth);
+      }
+    });
+
+    function scrollTableToBottom(monthName) {
+      const wrapper = document.querySelector(`#${monthName} .table-wrapper`);
+      if (wrapper) wrapper.scrollTop = wrapper.scrollHeight;
+    }
+
+    function openMonth(monthName) {
+      document.querySelectorAll(".tab-content").forEach(tab => {
+        tab.style.display = "none";
+        tab.querySelectorAll("input, select").forEach(el => el.disabled = true);
+      });
+
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+
+      const activeTab = document.getElementById(monthName);
+      activeTab.style.display = "block";
+      activeTab.querySelectorAll("input, select").forEach(el => el.disabled = false);
+
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        if (btn.innerText === monthName) btn.classList.add("active");
+      });
+
+      document.getElementById("active-month").value = monthName;
+      scrollTableToBottom(monthName);
+    }
+
+    function filterTrips(month, searchValue) {
+      searchValue = searchValue.toLowerCase();
+      const table = document.querySelector(`#${month} table`);
+      const rows = table.querySelectorAll("tbody tr");
+
+      rows.forEach(row => {
+        const rowText = row.innerText.toLowerCase();
+        row.style.display = rowText.includes(searchValue) ? "" : "none";
+      });
+    }
+
+    function filterCurrentMonth(searchValue) {
+      const activeTab = document.querySelector(".tab-btn.active");
+      if (!activeTab) return;
+      filterTrips(activeTab.innerText, searchValue);
+    }
+  </script>
+
+  <!-- ================= MONTH TABS ================= -->
+  <div class="tabs">
+    {% set all_months = ["January","February","March","April","May","June","July","August","September","October","November","December"] %}
+    {% for month in all_months %}
+      <button type="button"
+              class="tab-btn {% if month == current_month %}active{% endif %}"
+              onclick="openMonth('{{ month }}')">
+        {{ month }}
+      </button>
+    {% endfor %}
+  </div>
+
+  <!-- Search bar -->
+  <input type="text"
+         class="trip-search"
+         placeholder="Search trips..."
+         onkeyup="filterCurrentMonth(this.value)">
+
+  <!-- Hidden field to store active month -->
+  <input type="hidden" name="active_month" id="active-month">
+
+  <!-- ================= MONTH CONTENT ================= -->
+  {% for month in all_months %}
+    {% set trips = trips_by_month.get(month, []) %}
+    <div class="tab-content" id="{{ month }}">
+      <h3><strong>{{ month }} Trips</strong></h3>
+
+      <!-- ================= DASHBOARD CARDS (ABOVE TABLE) ================= -->
+      <div class="dashboard-cards">
+
+        <div class="card">
+          <h4>Total Trips</h4>
+          <p>{{ trips | length }}</p>
+        </div>
+
+        <div class="card">
+          <h4>Completed</h4>
+          <p>{{ trips | selectattr("status", "equalto", "OFFLOADED") | list | length }}</p>
+        </div>
+
+        <div class="card">
+          <h4>In Transit</h4>
+          <p>{{ trips | selectattr("status", "equalto", "IN TRANSIT") | list | length }}</p>
+        </div>
+
+        <!-- Engen completed orders per offloading point -->
+        {% set engen_trips = trips | selectattr("customer", "equalto", "Engen") | selectattr("status", "equalto", "OFFLOADED") | list %}
+        {% if engen_trips %}
+          {% set engen_points = {} %}
+          {% for trip in engen_trips %}
+            {% set point = trip.offloading_point or "Unknown" %}
+            {% if point in engen_points %}
+              {% set _ = engen_points.update({point: engen_points[point] + 1}) %}
+            {% else %}
+              {% set _ = engen_points.update({point: 1}) %}
+            {% endif %}
+          {% endfor %}
+
+          {% for point, count in engen_points.items() %}
+            <div class="card card-engen">
+              <h4>Engen – {{ point }}</h4>
+              <p>{{ count }} Completed</p>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- OVK completed orders -->
+        {% set ovk_completed = trips | selectattr("customer", "equalto", "OVK") | selectattr("status", "equalto", "OFFLOADED") | list | length %}
+        {% if ovk_completed > 0 %}
+          <div class="card card-ovk">
+            <h4>OVK</h4>
+            <p>{{ ovk_completed }} Completed</p>
+          </div>
+        {% endif %}
+
+      </div>
+
+      <!-- ================= TRIPS TABLE ================= -->
+      <div class="table-wrapper">
+        <table class="data-table" border="1" cellpadding="8">
+          <thead>
+            <tr>
+              <th>Date Loaded</th>
+              <th>Loading Point</th>
+              <th>Truck Reg</th>
+              <th>Trailer Reg</th>
+              <th>Driver</th>
+              <th>Customer</th>
+              <th>Order #</th>
+              <th>Product</th>
+              <th>Litres Loaded</th>
+              <th>Loading KM</th>
+              <th>Loading Time</th>
+              <th>Status</th>
+              <th>Position</th>
+              <th>Offloading Point</th>
+              <th>Date Offloaded</th>
+              <th>Litres Offloaded</th>
+              <th>Offloading KM</th>
+              <th>Offloading Time</th>
+              <th>DN #</th>
+              <th>ETA</th>
+              <th>Difference</th>
+              <th>KM Travelled</th>
+              <th>Time Taken</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            <!-- ================= EXISTING TRIPS ================= -->
+            {% for trip in trips %}
+            {% set diff = trip.difference|float(default=0) %}
+            <tr class="
+              {% if trip.status == 'LOADING' %}row-loading{% endif %}
+              {% if trip.status == 'IN TRANSIT' %}row-transit{% endif %}
+              {% if trip.status == 'OFFLOADED' %}row-offloaded{% endif %}
+            ">
+              <td>{{ trip.date_loaded }}</td>
+              <td>{{ trip.loading_point }}</td>
+              <td>{{ trip.truck_reg }}</td>
+              <td>{{ trip.trailer_reg }}</td>
+              <td>{{ trip.driver }}</td>
+              <td>{{ trip.customer }}</td>
+              <td>{{ trip.order_number }}</td>
+              <td>{{ trip.product }}</td>
+              <td>{{ trip.litres_loaded }}</td>
+              <td>{{ trip.loading_km }}</td>
+              <td>{{ trip.loading_time }}</td>
+
+              <!-- Status + Position update -->
+              <td>
+                <form method="POST" action="/trips/status/{{ trip.order_number }}" style="display:inline;">
+                  <select name="status">
+                    <option value="LOADING" {% if trip.status == "LOADING" %}selected{% endif %}>LOADING</option>
+                    <option value="IN TRANSIT" {% if trip.status == "IN TRANSIT" %}selected{% endif %}>IN TRANSIT</option>
+                    <option value="OFFLOADED" {% if trip.status == "OFFLOADED" %}selected{% endif %}>OFFLOADED</option>
+                  </select>
+                  <input type="text" name="position" value="{{ trip.position }}" placeholder="Position">
+                  <button type="submit">💾</button>
+                </form>
+              </td>
+
+              <td>{{ trip.position }}</td>
+              <td>{{ trip.offloading_point }}</td>
+              <td>{{ trip.date_offloaded }}</td>
+              <td>{{ trip.litres_offloaded }}</td>
+              <td>{{ trip.offloading_km }}</td>
+              <td>{{ trip.offloading_time }}</td>
+              <td>{{ trip.dn_number }}</td>
+              <td>{{ trip.eta }}</td>
+              <td class="
+                    {% if diff < 0 %}text-danger
+                    {% elif diff > 0 %}text-warning
+                    {% else %}text-success
+                    {% endif %}">
+                {{ diff }}
+              </td>
+              <td>{{ trip.km_travelled }}</td>
+              <td>{{ trip.time_taken }}</td>
+
+              <!-- Action buttons -->
+              <td>
+                <button type="button" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">✏️</button>
+                <form method="POST"
+                      action="/trips/delete/{{ trip.order_number }}"
+                      style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete this trip?');">
+                  <button type="submit">🗑️</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+
+            <!-- ================= ADD NEW TRIP ROW ================= -->
+            <form method="POST" action="/trips">
+              <tr class="add-row">
+                <td><input type="date" name="date_loaded" required></td>
+                <td><input type="text" name="loading_point" placeholder="Loading..."></td>
+                <td><input type="text" name="truck_reg" placeholder="Truck" required></td>
+                <td><input type="text" name="trailer_reg" placeholder="Trailer"></td>
+                <td><input type="text" name="driver" placeholder="Driver" required></td>
+                <td><input type="text" name="customer" placeholder="Customer"></td>
+                <td><input type="text" name="order_number" placeholder="Order #"></td>
+                <td><input type="text" name="product" placeholder="Product"></td>
+                <td><input type="number" name="litres_loaded" placeholder="Litres Loaded"></td>
+                <td><input type="number" name="loading_km" placeholder="Loading KM"></td>
+                <td><input type="time" name="loading_time"></td>
+                <td>
+                  <select name="status">
+                    <option value="LOADING">LOADING</option>
+                    <option value="IN TRANSIT">IN TRANSIT</option>
+                    <option value="OFFLOADED">OFFLOADED</option>
+                  </select>
+                </td>
+                <td><input type="text" name="position" placeholder="Position"></td>
+                <td><input type="text" name="offloading_point" placeholder="Offloading..."></td>
+                <td><input type="date" name="date_offloaded"></td>
+                <td><input type="number" name="litres_offloaded" placeholder="Litres Offloaded"></td>
+                <td><input type="number" name="offloading_km" placeholder="Offloading KM"></td>
+                <td><input type="time" name="offloading_time"></td>
+                <td><input type="text" name="dn_number" placeholder="DN #"></td>
+                <td><input type="text" name="eta" placeholder="ETA"></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                  <button type="submit" class="add-btn">➕ New Load</button>
+                </td>
+              </tr>
+            </form>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ================= MONTHLY SUMMARY CARDS ================= -->
+      {% set stats = monthly_stats.get(month, {}) %}
+
+      <div class="summary-cards">
+
+        <!-- 1. Turnaround Time by Route -->
+        <div class="summary-card">
+          <h3>Turnaround Time (hrs)</h3>
+          {% for point, avg in stats.get("turnaround_by_point", {}).items() %}
+            <div class="stat-row">
+              <span>{{ point }}</span>
+              <span class="stat-val">{{ avg }} hrs</span>
+            </div>
+          {% else %}
+            <p class="status-msg">No completed trips</p>
+          {% endfor %}
+        </div>
+
+        <!-- 2. Fuel Control by Route -->
+        <div class="summary-card">
+          <h3>Fuel Control</h3>
+          {% for point, fuel in stats.get("fuel_by_point", {}).items() %}
+            <div class="stat-row">
+              <span>{{ point }}</span> 
+            </div>
+            <span class="stat-val">
+                Loaded: {{ fuel.loaded }} L |
+                Offloaded: {{ fuel.offloaded }} L |
+                Diff: {{ fuel.difference }} L
+              </span>
+          {% else %}
+            <p class="status-msg">No fuel data</p>
+          {% endfor %}
+        </div>
+
+        <!-- 3. Kilometres by Route -->
+        <div class="summary-card">
+          <h3>KMs by Route</h3>
+          {% for point, km in stats.get("km_by_point", {}).items() %}
+            <div class="stat-row">
+              <span>{{ point }}</span>
+              <span class="stat-val">{{ km }} km</span>
+            </div>
+          {% else %}
+            <p class="status-msg">No KM data</p>
+          {% endfor %}
+        </div>
+
+        <!-- 4. Customer Activity -->
+        <div class="summary-card">
+          <h3>Customer Activity</h3>
+          {% for customer, count in stats.get("customer_activity", {}).items() %}
+            <div class="stat-row">
+              <span>{{ customer }}</span>
+              <span class="stat-val">{{ count }} trips</span>
+            </div>
+          {% else %}
+            <p class="status-msg">No customer data</p>
+          {% endfor %}
+        </div>
+
+        <!-- 5. Active Drivers -->
+        <div class="summary-card">
+          <h3>Active Drivers</h3>
+          <p class="big-number">{{ stats.get("active_driver_count", 0) }}</p>
+          <p class="status-msg">Drivers with trips this month</p>
+        </div>
+
+        <!-- 6. Idle Fleet -->
+        <div class="summary-card">
+          <h3>Idle Trucks</h3>
+          <p class="big-number">{{ stats.get("idle_truck_count", 0) }}</p>
+          <p class="status-msg">Trucks not currently assigned</p>
+        </div>
+
+        <!-- 7. Best Route -->
+        <div class="summary-card highlight-good">
+          <h3>Best Performing Route</h3>
+          {% if stats.get("fastest_route") %}
+            <p class="big-text">{{ stats.get("fastest_route") }}</p>
+            <p class="status-msg">
+              {{ stats.get("route_turnaround_averages", {}).get(stats.get("fastest_route"), 0) }} hrs avg
+            </p>
+          {% else %}
+            <p class="status-msg">No data</p>
+          {% endif %}
+        </div>
+
+        <!-- 8. Worst Route -->
+        <div class="summary-card highlight-bad">
+          <h3>Worst Performing Route</h3>
+          {% if stats.get("slowest_route") %}
+            <p class="big-text">{{ stats.get("slowest_route") }}</p>
+            <p class="status-msg">
+              {{ stats.get("route_turnaround_averages", {}).get(stats.get("slowest_route"), 0) }} hrs avg
+            </p>
+          {% else %}
+            <p class="status-msg">No data</p>
+          {% endif %}
+        </div>
+
+      </div>
+
+    </div>
+  {% endfor %}
+
+  <!-- ================= EDIT MODALS ================= -->
+  {% for month in all_months %}
+    {% set trips = trips_by_month.get(month, []) %}
+    {% for trip in trips %}
+      <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <form method="POST" action="/trips/edit/{{ trip.order_number }}" class="modal-content">
+
+            <div class="modal-header">
+              <h5 class="modal-title">Edit Trip — Order {{ trip.order_number }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="row g-3">
+
+                <div class="col-md-4">
+                  <label>Date Loaded</label>
+                  <input type="date" name="date_loaded" value="{{ trip.date_loaded }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Loading Point</label>
+                  <input type="text" name="loading_point" value="{{ trip.loading_point }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Truck Reg</label>
+                  <input type="text" name="truck_reg" value="{{ trip.truck_reg }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Trailer Reg</label>
+                  <input type="text" name="trailer_reg" value="{{ trip.trailer_reg }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Driver</label>
+                  <input type="text" name="driver" value="{{ trip.driver }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Customer</label>
+                  <input type="text" name="customer" value="{{ trip.customer }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Order Number</label>
+                  <input type="text" name="order_number" value="{{ trip.order_number }}" class="form-control" readonly>
+                </div>
+
+                <div class="col-md-4">
+                  <label>Product</label>
+                  <input type="text" name="product" value="{{ trip.product }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Litres Loaded</label>
+                  <input type="number" name="litres_loaded" value="{{ trip.litres_loaded }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Loading KM</label>
+                  <input type="number" name="loading_km" value="{{ trip.loading_km }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Loading Time</label>
+                  <input type="time" name="loading_time" value="{{ trip.loading_time }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Status</label>
+                  <select name="status" class="form-select">
+                    <option value="LOADING" {% if trip.status == "LOADING" %}selected{% endif %}>LOADING</option>
+                    <option value="IN TRANSIT" {% if trip.status == "IN TRANSIT" %}selected{% endif %}>IN TRANSIT</option>
+                    <option value="OFFLOADED" {% if trip.status == "OFFLOADED" %}selected{% endif %}>OFFLOADED</option>
+                  </select>
+                </div>
+
+                <div class="col-md-4">
+                  <label>Position</label>
+                  <input type="text" name="position" value="{{ trip.position }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Offloading Point</label>
+                  <input type="text" name="offloading_point" value="{{ trip.offloading_point }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Date Offloaded</label>
+                  <input type="date" name="date_offloaded" value="{{ trip.date_offloaded }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Litres Offloaded</label>
+                  <input type="number" name="litres_offloaded" value="{{ trip.litres_offloaded }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Offloading KM</label>
+                  <input type="number" name="offloading_km" value="{{ trip.offloading_km }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Offloading Time</label>
+                  <input type="time" name="offloading_time" value="{{ trip.offloading_time }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>DN Number</label>
+                  <input type="text" name="dn_number" value="{{ trip.dn_number }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>ETA</label>
+                  <input type="datetime-local" name="eta" value="{{ trip.eta }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>KM Travelled</label>
+                  <input type="number" name="km_travelled" value="{{ trip.km_travelled }}" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                  <label>Time Taken</label>
+                  <input type="text" name="time_taken" value="{{ trip.time_taken }}" class="form-control">
+                </div>
+
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-success">Save Changes</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  {% endfor %}
+
+</div>
+
+{% endblock %}

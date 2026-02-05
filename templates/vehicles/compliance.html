@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Truck & Tanker Compliance</h2>
+{% for truck, docs in trucks.items() %}
+  <h3>Truck {{ truck }}</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Document</th>
+        <th>Issue Date</th>
+        <th>Expiry Date</th>
+        <th>Days Left</th>
+        <th>Status</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for doc in docs %}
+      <tr class="{{ doc.color }}">
+        <td>{{ doc.doc_type }}</td>
+        <td>{{ doc.issue_date }}</td>
+        <td>{{ doc.expiry_date }}</td>
+        <td>{{ doc.days_remaining }}</td>
+        <td>{{ doc.status }}</td>
+        <td>{{ doc.notes }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endfor %}
+
+{% endblock %}

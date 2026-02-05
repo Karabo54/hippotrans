@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page">
+  <h2><strong>Truck Breakdowns</strong></h2>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- ================= SUMMARY CARDS ================= -->
+  {% set active_breakdowns = breakdowns | selectattr("status", "in", ["REPORTED", "IN REPAIR"]) | list | length %}
+  {% set repaired_breakdowns = breakdowns | selectattr("status", "equalto", "REPAIRED") | list | length %}
+  {% set total_cost = breakdowns | selectattr("repair_cost") | map(attribute="repair_cost") | map("float", default=0) | sum %}
+  {% set avg_downtime = (breakdowns | selectattr("downtime_hours") | map(attribute="downtime_hours") | map("float", default=0) | list | sum / (repaired_breakdowns if repaired_breakdowns > 0 else 1)) | round(2) %}
+
+  <div class="summary-cards">
+    <div class="summary-card alert-border">
+      <h3>Active Breakdowns</h3>
+      <p class="big-number">{{ active_breakdowns }}</p>
+    </div>
+
+    <div class="summary-card">
+      <h3>Repaired This Period</h3>
+      <p class="big-number">{{ repaired_breakdowns }}</p>
+    </div>
+
+    <div class="summary-card">
+      <h3>Total Repair Cost</h3>
+      <p class="big-number">R {{ total_cost }}</p>
+    </div>
+
+    <div class="summary-card">
+      <h3>Avg Downtime</h3>
+      <p class="big-number">{{ avg_downtime }} hrs</p>
+    </div>
+  </div>
+
+  <!-- ================= ADD BREAKDOWN FORM ================= -->
+  <div class="card">
+    <h3>Report Breakdown</h3>
+    <form method="POST" action="/breakdowns" class="form-grid">
+
+      <input type="date" name="reported_date" required>
+      <input type="time" name="reported_time" required>
+
+      <select name="truck_reg" required>
+        <option value="">Select Truck</option>
+        {% for v in vehicles %}
+          <option value="{{ v.truck_reg }}">{{ v.truck_reg }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="driver" required>
+        <option value="">Select Driver</option>
+        {% for d in drivers %}
+          <option value="{{ d.driver_name }}">{{ d.driver_name }}</option>
+        {% endfor %}
+      </select>
+
+      <input type="number" name="km_at_breakdown" placeholder="KM at Breakdown" required>
+      <input type="text" name="location" placeholder="Breakdown Location" required>
+      <input type="text" name="issue_description" placeholder="Issue Description" required>
+
+      <button type="submit" class="add-btn">➕ Report Breakdown</button>
+    </form>
+  </div>
+
+  <!-- ================= BREAKDOWNS TABLE ================= -->
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Truck</th>
+          <th>Driver</th>
+          <th>Location</th>
+          <th>Issue</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>KM</th>
+          <th>Status</th>
+          <th>Repair Cost</th>
+          <th>Workshop</th>
+          <th>Downtime (hrs)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in breakdowns %}
+        <tr class="{% if b.status != 'REPAIRED' %}row-alert{% endif %}">
+          <td>{{ b.breakdown_id }}</td>
+          <td>{{ b.truck_reg }}</td>
+          <td>{{ b.driver }}</td>
+          <td>{{ b.location }}</td>
+          <td>{{ b.issue_description }}</td>
+          <td>{{ b.reported_date }}</td>
+          <td>{{ b.reported_time }}</td>
+          <td>{{ b.km_at_breakdown }}</td>
+          <td>{{ b.status }}</td>
+          <td>{{ b.repair_cost }}</td>
+          <td>{{ b.workshop }}</td>
+          <td>{{ b.downtime_hours }}</td>
+
+          <td>
+            <form method="POST" action="/breakdowns/update/{{ b.breakdown_id }}">
+              <select name="status">
+                <option value="REPORTED" {% if b.status == "REPORTED" %}selected{% endif %}>REPORTED</option>
+                <option value="IN REPAIR" {% if b.status == "IN REPAIR" %}selected{% endif %}>IN REPAIR</option>
+                <option value="REPAIRED" {% if b.status == "REPAIRED" %}selected{% endif %}>REPAIRED</option>
+              </select>
+              <input type="number" step="0.01" name="repair_cost" placeholder="Cost">
+              <input type="text" name="workshop" placeholder="Workshop">
+              <input type="text" name="notes" placeholder="Notes">
+              <button type="submit">💾</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+{% endblock %}

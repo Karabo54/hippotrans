@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    :root { --primary: #4a90e2; --bg: #f4f7f6; --text: #333; }
+    .doc-container { max-width: 900px; margin: 2rem auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: var(--text); }
+    
+    /* Upload Section */
+    .upload-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 2rem; border: 2px dashed #cbd5e0; text-align: center; }
+    .file-input { margin: 10px 0; }
+    
+    /* Document List */
+    .doc-grid { display: grid; gap: 1rem; }
+    .doc-item { background: white; padding: 1rem 1.5rem; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.04); transition: transform 0.2s; }
+    .doc-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    
+    .doc-info { display: flex; align-items: center; gap: 15px; }
+    .doc-icon { font-size: 1.5rem; color: #e53e3e; } /* PDF Red */
+    
+    /* Action Buttons */
+    .btn-group { display: flex; gap: 8px; align-items: center; }
+    button, .btn-link { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; transition: 0.2s; text-decoration: none; }
+    .btn-download { background: #ebf8ff; color: #2b6cb0; }
+    .btn-print { background: #faf5ff; color: #6b46c1; }
+    .btn-email { background: #f0fff4; color: #2f855a; border: 1px solid #c6f6d5; }
+    
+    .email-form { display: flex; gap: 5px; }
+    .email-input { padding: 6px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+</style>
+
+<div class="doc-container">
+    <header>
+        <h1 style="margin-bottom: 0.5rem;">Document Manager</h1>
+        <p style="color: #666; margin-bottom: 2rem;">Upload and manage your PDF library</p>
+    </header>
+
+    <section class="upload-card">
+        <h3>Upload New PDF</h3>
+        <form action="{{ url_for('upload_doc') }}" method="POST" enctype="multipart/form-data">
+            <input type="file" name="pdf_file" accept="application/pdf" class="file-input" required>
+            <br>
+            <button type="submit" style="background: var(--primary); color: white; margin-top: 10px;">Upload Document</button>
+        </form>
+    </section>
+
+    <section>
+        <h3 style="margin-bottom: 1rem;">Recent Documents</h3>
+        <div class="doc-grid">
+            {% for file in files %}
+            <div class="doc-item">
+                <div class="doc-info">
+                    <span class="doc-icon">📄</span>
+                    <div>
+                        <strong style="display: block;">{{ file }}</strong>
+                        <small style="color: #999;">PDF Document</small>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <a href="{{ url_for('download_doc', filename=file) }}" class="btn-link btn-download">Download</a>
+                    <button class="btn-print" onclick="printPDF('{{ file }}')">Print</button>
+                    
+                    <form action="{{ url_for('send_doc_email') }}" method="POST" class="email-form">
+                        <input type="hidden" name="filename" value="{{ file }}">
+                        <input type="email" name="to_email" placeholder="Recipient email" class="email-input" required>
+                        <button type="submit" class="btn-email">Send</button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #999; padding: 2rem;">No documents found. Start by uploading one!</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<script>
+function printPDF(filename) {
+    const url = `/documents/view/${filename}`;
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    
+    iframe.onload = function() {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    };
+}
+</script>
+{% endblock %}
