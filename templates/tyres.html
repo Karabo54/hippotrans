@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-navy mb-0"><i class="fas fa-circle-notch me-2"></i>Tyre Inventory & Life Cycle</h2>
+            <p class="text-muted small">Track 385/65 and 315/80 tyres from purchase to scrap</p>
+        </div>
+        <button class="btn btn-success shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#buyTyreModal">
+            <i class="fas fa-plus-circle me-2"></i>Register New Purchase
+        </button>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 border-start border-primary border-4 text-center">
+                <small class="text-muted fw-bold">TOTAL IN STOCK</small>
+                <h3 class="fw-bold mb-0 text-primary">{{ stock_count }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 border-start border-success border-4 text-center">
+                <small class="text-muted fw-bold">CURRENTLY FITTED</small>
+                <h3 class="fw-bold mb-0 text-success">{{ fitted_count }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 border-start border-warning border-4 text-center">
+                <small class="text-muted fw-bold">PENDING RETREAD</small>
+                <h3 class="fw-bold mb-0 text-warning">{{ retread_count }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 border-start border-danger border-4 text-center">
+                <small class="text-muted fw-bold">SCRAPPED THIS MONTH</small>
+                <h3 class="fw-bold mb-0 text-danger">{{ scrap_count }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold text-navy"><i class="fas fa-list me-2"></i>Tyre Registry</h6>
+            <input type="text" id="tyreSearch" class="form-control form-control-sm w-25" placeholder="Search Serial # or Truck...">
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tyreTable">
+                <thead class="bg-light small fw-bold">
+                    <tr>
+                        <th>Serial No.</th>
+                        <th>Size/Brand</th>
+                        <th>Purchase Date</th>
+                        <th>Status</th>
+                        <th>Current Fitting</th>
+                        <th>KM Fitted</th>
+                        <th class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tyres %}
+                    <tr>
+                        <td><span class="fw-bold text-primary">{{ t.serial_no }}</span></td>
+                        <td>
+                            <div class="small fw-bold">{{ t.size }}</div>
+                            <small class="text-muted">{{ t.brand }}</small>
+                        </td>
+                        <td><small>{{ t.purchase_date }}</small></td>
+                        <td>
+                            {% if t.status == 'Stock' %}
+                                <span class="badge bg-info-soft text-info border border-info">In Stock</span>
+                            {% elif t.status == 'Fitted' %}
+                                <span class="badge bg-success-soft text-success border border-success">Fitted</span>
+                            {% elif t.status == 'Retread' %}
+                                <span class="badge bg-warning-soft text-warning border border-warning">At Retread</span>
+                            {% else %}
+                                <span class="badge bg-danger-soft text-danger border border-danger">Scrapped</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.status == 'Fitted' %}
+                                <div class="small fw-bold">{{ t.truck_reg }}</div>
+                                <small class="text-muted">Pos: {{ t.position }}</small>
+                            {% else %}
+                                <span class="text-muted small">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ t.km_fitted or '-' }}</small></td>
+                        <td class="text-end pe-3">
+                            {% if t.status == 'Stock' %}
+                            <button class="btn btn-sm btn-outline-success" onclick='openFitmentModal({{ t | tojson }})'>
+                                <i class="fas fa-wrench me-1"></i>Fit to Truck
+                            </button>
+                            {% elif t.status == 'Fitted' %}
+                            <button class="btn btn-sm btn-outline-danger" onclick='openRemovalModal({{ t | tojson }})'>
+                                <i class="fas fa-minus-circle me-1"></i>Remove
+                            </button>
+                            {% endif %}
+                            <button class="btn btn-sm btn-light border ms-1" title="View History"><i class="fas fa-history"></i></button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="buyTyreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-navy text-white">
+                <h5 class="modal-title fw-bold">Register New Tyre Purchase</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/tyres/buy" method="POST">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="small fw-bold">SERIAL NUMBER (Unique)</label>
+                            <input type="text" name="serial_no" class="form-control" required placeholder="e.g. DOT4523X">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold">TYRE SIZE</label>
+                            <select name="size" class="form-select" required>
+                                <option value="315/80 R22.5">315/80 R22.5 (Drive/Steer)</option>
+                                <option value="385/65 R22.5">385/65 R22.5 (Trailer/Super Single)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small fw-bold">BRAND</label>
+                            <input type="text" name="brand" class="form-control" placeholder="e.g. Michelin / Bridgestone">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small fw-bold">PURCHASE DATE</label>
+                            <input type="date" name="purchase_date" class="form-control" value="{{ current_date }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small fw-bold">COST (R)</label>
+                            <input type="number" step="0.01" name="cost" class="form-control">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="small fw-bold">SUPPLIER</label>
+                            <input type="text" name="supplier" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success px-5 shadow">Add to Stock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="fitTyreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-wrench me-2"></i>Fit Tyre to Vehicle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/tyres/fit" method="POST">
+                <input type="hidden" name="serial_no" id="fit_serial">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="small fw-bold">SELECT TRUCK / TRAILER</label>
+                            <select name="truck_reg" class="form-select" required>
+                                {% for v in vehicles %}<option value="{{ v.truck_reg }}">{{ v.truck_reg }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold">FITTING POSITION</label>
+                            <select name="position" class="form-select" required>
+                                <option>Front Left (Steer)</option>
+                                <option>Front Right (Steer)</option>
+                                <option>Drive 1 Left Inner</option>
+                                <option>Drive 1 Left Outer</option>
+                                <option>Drive 1 Right Inner</option>
+                                <option>Drive 1 Right Outer</option>
+                                <option>Trailer 1 Left</option>
+                                <option>Trailer 1 Right</option>
+                                </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small fw-bold">CURRENT ODO (KM)</label>
+                            <input type="number" name="km_fitted" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small fw-bold">ASSIGNED DRIVER</label>
+                            <select name="driver_name" class="form-select">
+                                {% for d in drivers %}<option value="{{ d['NAME/SURNAME'] }}">{{ d['NAME/SURNAME'] }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small fw-bold">INSTALLED BY</label>
+                            <input type="text" name="installer" class="form-control" placeholder="Mechanic name">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-success w-100">Confirm Fitment</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="removeTyreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Remove Tyre from Service</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/tyres/remove" method="POST">
+                <input type="hidden" name="serial_no" id="remove_serial">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="small fw-bold">REMOVAL ODO (KM)</label>
+                            <input type="number" name="km_removed" class="form-control" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="small fw-bold">REASON FOR REMOVAL</label>
+                            <select name="reason" class="form-select" id="removalReason">
+                                <option value="Worn Out">Worn Out (Smooth)</option>
+                                <option value="Puncture/Damage">Puncture / Side Damage</option>
+                                <option value="Blowout">Blowout</option>
+                                <option value="Rotation">Rotation / Swapping</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mt-3 p-3 bg-light rounded">
+                            <label class="small fw-bold text-navy">TYRE DISPOSITION (THE END)</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="disposition" value="Scrap" checked>
+                                <label class="form-check-label">Scrap / Dispose</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="disposition" value="Retread">
+                                <label class="form-check-label">Send for Retreading</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="disposition" value="Stock">
+                                <label class="form-check-label">Keep as Spare (Used)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-danger w-100">Confirm Removal</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-navy { background-color: #001f3f; }
+    .text-navy { color: #001f3f; }
+    .bg-info-soft { background-color: #e3f2fd; }
+    .bg-success-soft { background-color: #e8f5e9; }
+    .bg-warning-soft { background-color: #fffde7; }
+    .bg-danger-soft { background-color: #ffebee; }
+</style>
+
+<script>
+// Search Functionality
+document.getElementById('tyreSearch').addEventListener('keyup', function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll('#tyreTable tbody tr');
+    rows.forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(filter) ? '' : 'none';
+    });
+});
+
+function openFitmentModal(tyre) {
+    document.getElementById('fit_serial').value = tyre.serial_no;
+    new bootstrap.Modal(document.getElementById('fitTyreModal')).show();
+}
+
+function openRemovalModal(tyre) {
+    document.getElementById('remove_serial').value = tyre.serial_no;
+    new bootstrap.Modal(document.getElementById('removeTyreModal')).show();
+}
+</script>
+{% endblock %}

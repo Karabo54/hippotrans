@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* UI Layout Styles */
+    .top-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+    .simple-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #0d47a1; }
+    .table-container { background: white; border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #258aef; color: white; padding: 12px; text-align: left; }
+    td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+    
+    #matrixSearch:focus {
+        outline: none;
+        border-color: #258aef;
+        box-shadow: 0 0 0 3px rgba(37, 138, 239, 0.2);
+    }
+
+    .alert-card, tr {
+        transition: opacity 0.2s ease;
+    }
+    /* MODAL STYLING */
+    .modal { 
+        display: none; 
+        position: fixed; 
+        z-index: 9999; 
+        left: 0; top: 0; 
+        width: 100%; height: 100%; 
+        background: rgba(0, 0, 0, 0.6); 
+        backdrop-filter: blur(4px);
+        align-items: center; 
+        justify-content: center; 
+    }
+
+    .modal-content { 
+        background: white; 
+        padding: 30px; 
+        border-radius: 12px; 
+        width: 450px !important; 
+        max-width: 90% !important; 
+        margin: auto; 
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        position: relative;
+        animation: modalFadeIn 0.3s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+        from { transform: scale(0.9); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    #driverModal form {
+        width: 100%;
+    }
+
+    .tabs { display: flex; gap: 3px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+    .tab-btn { padding: 8px 12px; border: none; background: none; cursor: pointer; font-weight: bold; color: #666; font-size: 13px; }
+    .tab-btn.active { color: #fbfcfd; border-bottom: 2px solid #258aef; }
+    
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 11px; font-weight: bold; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+    .form-group input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .status-expired { color: #d9534f; font-weight: bold; }
+    .status-warning { color: #f0ad4e; font-weight: bold; }
+    .btn-compliance { background: #0d47a1; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+
+    .summary-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    .alert-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .alert-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border: 1px solid #eee;
+        display: flex;
+        flex-direction: column;
+        max-height: 250px; 
+    }
+
+    .alert-card-header {
+        padding: 12px 15px;
+        background: #f8f9fa;
+        border-bottom: 2px solid #0d47a1;
+        border-radius: 10px 10px 0 0;
+        font-weight: bold;
+        color: #0d47a1;
+        font-size: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .alert-card-body {
+        padding: 10px 15px;
+        overflow-y: auto; 
+        flex-grow: 1;
+    }
+
+    .doc-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+    }
+    
+    .doc-item:last-child { border-bottom: none; }
+    
+    .small-date { font-size: 11px; color: #888; display: block; }
+    
+    .urgent-badge { 
+        padding: 4px 10px; 
+        border-radius: 15px; 
+        background-color: #ffaa00; 
+        font-weight: bold; 
+        color: white !important; 
+        font-size: 11px;
+    }
+    .expired-badge {
+        background-color: #ff2400;
+        color: #ffffff;
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-weight: bold;
+        font-size: 11px;
+    }
+    .upcoming-badge { 
+        padding: 4px 10px; 
+        border-radius: 15px; 
+        background-color: #714788; 
+        font-weight: bold; 
+        color: #212529 !important; 
+        font-size: 11px;
+    }
+    
+    .alert-count {
+        background: #f7a1a1a5;
+        color: rgb(47, 45, 45);
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+    }
+</style>
+
+<div class="top-cards">
+    <div class="simple-card"><h3>{{ stats.top.total }}</h3><p>TOTAL Drivers</p></div>
+    <div class="simple-card" style="border-left-color: #f40b03;"><h3>{{ stats.top.expired }}</h3><p>EXPIRED</p></div>
+    <div class="simple-card" style="border-left-color: #f0ad4e;"><h3>{{ stats.top.due }}</h3><p>DUE 30 DAYS</p></div>
+</div>
+
+<div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h2>BTO Compliance Matrix</h2>
+    <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+        <div style="position: relative; flex: 1;">
+            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #888;">🔍</span>
+            <input type="text" id="matrixSearch" onkeyup="filterMatrix()" placeholder="Search by Driver Name, ID, Passport, or Document..." 
+                style="width: 100%; padding: 10px 10px 10px 35px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);">
+        </div>
+        <div style="font-size: 13px; color: #666; font-weight: 500;">
+            Showing: <span id="rowCount">{{ drivers|length }}</span> drivers
+        </div>
+    </div>
+    <button class="btn-compliance" onclick="openAddModal()">+ Register New Driver</button>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Primary Phone</th> 
+                <th>PrDP Expiry</th>
+                <th>Medical</th>
+                <th>Hazchem</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in drivers %}
+            <tr onclick='openEditModal({{ d|tojson | safe }})'>
+                <td>
+                    <a href="/driver/profile/{{ d['bto_id'] }}" class="text-primary font-weight-bold">
+                        {{ d['NAME/SURNAME'] }}
+                    </a>
+                </td>
+                <td>
+                    <span class="d-block">{{ d['phone_number'] }}</span> <small class="text-muted">{{ d['sa_number'] or '' }}</small>
+                </td>
+                <td class="status-{{ d.pdp_status }}">{{ d['PDrP Exp Date'] }}</td>
+                <td class="status-{{ d.med_status }}">{{ d['Medical Exp Date'] }}</td>
+                <td class="status-{{ d.haz_status }}">{{ d['Hazchem / Dangerous Goods'] }}</td>
+                <td onclick="event.stopPropagation()"><a href="{{ url_for('bto_delete', bto_id=d.bto_id) }}">🗑️</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div style="margin-top: 40px;">
+    <h3 style="color: #0d47a1; margin-bottom: 20px;">⚠️ Driver Compliance Alerts (Next 60 Days)</h3>
+    
+    <div class="alert-grid">
+        {% for driver_name, docs in alerts.items() %}
+        <div class="alert-card">
+            <div class="alert-card-header">
+                <span>👤 {{ driver_name }}</span>
+                <span class="alert-count">⚠️ No.of Docs  {{ docs|length }}</span>
+            </div>
+            <div class="alert-card-body">
+                {% for doc in docs %}
+                <div class="doc-item">
+                    <div>
+                        <strong>{{ doc.doc_name }}</strong>
+                        <span class="small-date">Expires: {{ doc.expiry }}</span>
+                    </div>
+                    <div class="{{ doc.class }}" style="text-align: right;">
+                        {% if doc.days <= 0 %}
+                            <strong>EXPIRED</strong>
+                        {% else %}
+                            {{ doc.days }} Days left
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div style="grid-column: 1/-1; background: #e8f5e9; color: #2e7d32; padding: 20px; border-radius: 8px; text-align: center;">
+            <strong>✅ All drivers are fully compliant for the next 60 days.</strong>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="driverModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalTitle">Driver Profile</h3>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('tab1', this)">Identity</button>
+            <button class="tab-btn" onclick="showTab('tab2', this)">Dates</button>
+            <button class="tab-btn" onclick="showTab('tab3', this)">Technical</button>
+            <button class="tab-btn" onclick="showTab('tab4', this)">Training</button>
+            <button class="tab-btn" onclick="showTab('tab5', this)">Certificate</button>
+        </div>
+
+        <form action="{{ url_for('bto_save') }}" method="POST">
+            <input type="hidden" name="bto_id" id="f_id">
+            <input type="hidden" name="is_edit" id="f_edit">
+
+            <div id="tab1" class="tab-content">
+                <div class="form-group"><label>Name/Surname</label><input type="text" name="NAME/SURNAME" id="f_name" required></div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group"><label>Lesotho (VCL)</label><input type="text" name="phone_number" id="f_phone" placeholder="5xxxxxxx"></div>
+                    <div class="form-group"><label>Lesotho (Econet)</label><input type="text" name="econet_number" id="f_econet" placeholder="6xxxxxxx"></div>
+                </div>
+                <div class="form-group"><label>South Africa Number</label><input type="text" name="sa_number" id="f_sa" placeholder="071xxxxxxx"></div>
+                
+                <div class="form-group"><label>ID Number</label><input type="text" name="ID NO" id="f_idno"></div>
+                <div class="form-group"><label>Passport Number</label><input type="text" name="passport_number" id="f_passport"></div>
+                <div class="form-group"><label>DOB</label><input type="date" name="DOB" id="f_dob"></div>
+                <div class="form-group"><label>Medical Condition</label><input type="text" name="Medical Condition" id="f_condition"></div>
+            </div>
+
+            <div id="tab2" class="tab-content" style="display:none;">
+                <div class="form-group"><label>Drivers License Exp</label><input type="date" name="Drivers License Exp Date" id="f_lic"></div>
+                <div class="form-group"><label>PrDP Exp Date</label><input type="date" name="PDrP Exp Date" id="f_pdp"></div>
+                <div class="form-group"><label>International Permit Exp</label><input type="date" name="International Driving Permit -Exp Date" id="f_int_lic"></div>
+                <div class="form-group"><label>Medical Exp Date</label><input type="date" name="Medical Exp Date" id="f_med"></div>
+            </div>
+
+            <div id="tab3" class="tab-content" style="display:none;">
+                <div class="form-group"><label>BOS Loading/Offloading</label><input type="date" name="Loadind and Offloading procedure" id="f_bos"></div>
+                <div class="form-group"><label>In Cab K53 Date</label><input type="date" name="In Cab Assessment K53" id="f_k53"></div>
+                <div class="form-group"><label>In Cab K53 Expiry</label><input type="date" name="In Cab Assessment K53 Expiry Date" id="f_k53_exp"></div>
+                <div class="form-group"><label>Tanker Rollover Prevention</label><input type="date" name="Tanker Roll-Over Prevention" id="f_roll"></div>
+            </div>
+
+            <div id="tab4" class="tab-content" style="display:none;">
+                <div class="form-group"><label>Defensive Driving Exp</label><input type="date" name="Defensive Driving- Exp Date" id="f_def"></div>
+                <div class="form-group"><label>Smith System Expiry</label><input type="date" name="Smith System Expiry Date" id="f_smith"></div>
+                <div class="form-group"><label>Hazchem / Dangerous Goods</label><input type="date" name="Hazchem / Dangerous Goods" id="f_haz"></div>
+                <div class="form-group"><label>ZETO</label><input type="date" name="ZETO" id="f_zeto"></div>
+                <div class="form-group"><label>Induction</label><input type="date" name="Induction" id="f_induction"></div>
+            </div>
+
+            <div id="tab5" class="tab-content" style="display:none;">
+                <div class="form-group"><label>Spill Kit Training</label><input type="date" name="Spill Kit Training" id="f_spill"></div>
+                <div class="form-group"><label>Fire Fighting</label><input type="date" name="Fire Fighting" id="f_fire"></div>
+                <div class="form-group"><label>First Aid</label><input type="date" name="First Aid" id="f_aid"></div>
+                <div class="form-group"><label>Customer Care</label><input type="date" name="Customer Care" id="f_cust"></div>
+                <div class="form-group"><label>Environmental Awareness</label><input type="date" name="Environmental Awareness" id="f_env"></div>
+                <div class="form-group"><label>Truck/Defects Checklist</label><input type="date" name="Truck and Defects Check List" id="f_check"></div>
+            </div>
+
+            <div style="display:flex; justify-content: flex-end; gap:10px; margin-top:15px;">
+                <button type="button" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-compliance">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const modal = document.getElementById('driverModal');
+
+    function showTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).style.display = 'block';
+        btn.classList.add('active');
+    }
+
+    function openAddModal() {
+        document.getElementById('modalTitle').innerText = "Register New Driver";
+        document.getElementById('f_edit').value = "false";
+        document.getElementById('f_id').value = "";
+        
+        const form = modal.querySelector('form');
+        form.reset();
+        
+        showTab('tab1', document.querySelector('.tab-btn'));
+        modal.style.display = 'flex';
+    }
+
+    function openEditModal(data) {
+        document.getElementById('modalTitle').innerText = "Edit: " + data['NAME/SURNAME'];
+        document.getElementById('f_edit').value = "true";
+        document.getElementById('f_id').value = data.bto_id;
+
+        document.getElementById('f_name').value = data['NAME/SURNAME'] || '';
+        document.getElementById('f_idno').value = data['ID NO'] || '';
+        document.getElementById('f_passport').value = data['passport_number'] || '';
+        document.getElementById('f_phone').value = data['phone_number'] || '';
+        document.getElementById('f_econet').value = data['econet_number'] || '';
+        document.getElementById('f_sa').value = data['sa_number'] || '';
+        document.getElementById('f_dob').value = data['DOB'] || '';
+        document.getElementById('f_condition').value = data['Medical Condition'] || '';
+        
+        document.getElementById('f_lic').value = data['Drivers License Exp Date'] || '';
+        document.getElementById('f_pdp').value = data['PDrP Exp Date'] || '';
+        document.getElementById('f_int_lic').value = data['International Driving Permit -Exp Date'] || '';
+        document.getElementById('f_med').value = data['Medical Exp Date'] || '';
+
+        document.getElementById('f_bos').value = data['Loadind and Offloading procedure'] || '';
+        document.getElementById('f_k53').value = data['In Cab Assessment K53'] || '';
+        document.getElementById('f_k53_exp').value = data['In Cab Assessment K53 Expiry Date'] || '';
+        document.getElementById('f_roll').value = data['Tanker Roll-Over Prevention'] || '';
+
+        document.getElementById('f_def').value = data['Defensive Driving- Exp Date'] || '';
+        document.getElementById('f_smith').value = data['Smith System Expiry Date'] || '';
+        document.getElementById('f_haz').value = data['Hazchem / Dangerous Goods'] || '';
+        document.getElementById('f_zeto').value = data['ZETO'] || '';
+        document.getElementById('f_induction').value = data['Induction'] || '';
+
+        document.getElementById('f_spill').value = data['Spill Kit Training'] || '';
+        document.getElementById('f_fire').value = data['Fire Fighting'] || '';
+        document.getElementById('f_aid').value = data['First Aid'] || '';
+        document.getElementById('f_cust').value = data['Customer Care'] || '';
+        document.getElementById('f_env').value = data['Environmental Awareness'] || '';
+        document.getElementById('f_check').value = data['Truck and Defects Check List'] || '';
+
+        showTab('tab1', document.querySelector('.tab-btn'));
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) closeModal();
+    }
+
+    function filterMatrix() {
+        let input = document.getElementById("matrixSearch").value.toUpperCase();
+        
+        let table = document.querySelector("table");
+        let tr = table.getElementsByTagName("tr");
+        let visibleCount = 0;
+
+        for (let i = 1; i < tr.length; i++) {
+            let rowText = tr[i].textContent || tr[i].innerText;
+            if (rowText.toUpperCase().indexOf(input) > -1) {
+                tr[i].style.display = "";
+                visibleCount++;
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+        document.getElementById("rowCount").innerText = visibleCount;
+
+        let cards = document.querySelectorAll(".alert-card");
+        cards.forEach(card => {
+            let cardText = card.textContent || card.innerText;
+            if (cardText.toUpperCase().indexOf(input) > -1) {
+                card.style.display = "block";
+            } else {
+                card.style.display = "none";
+            }
+        });
+    }
+</script>
+{% endblock %}

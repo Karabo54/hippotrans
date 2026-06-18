@@ -1,85 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-          <meta charset="utf-8">
-          <title>SMS FUEL PTY LTD</title>
-          <!---script src="https://cdn.tailwindcss.com"></script>
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"-->    
-          <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-          <link rel="stylesheet" href="{{ url_for('static', filename='plugins/fontawesome-free/css/all.min.css') }}">
-          <link rel="stylesheet" href="{{ url_for('static', filename='dist/css/adminlte.min.css') }}">
-          <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    </head>
-    <script>
-      document.querySelectorAll(".has-sub > a").forEach(menu => {
-        menu.addEventListener("click", function (e) {
-          e.preventDefault();
-          this.parentElement.classList.toggle("open");
-        });
-      });
-    </script>
+<head>
+    <meta charset="utf-8">
+    <title>HIPPO TRANSPORT</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/css/adminlte.min.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+    /* --- SYNCHRONIZED TRANSITION FIX --- */
 
-    <body class="hold-transition sidebar-mini">
-          <div class="wrapper">
+    /* Define a consistent timing for everything */
+    :root {
+        --sidebar-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --expanded-width: 250px;
+        --collapsed-width: 70px;
+        --sky-blue: #009dff; 
+        --red: #ff4d4d; 
+        --green: #2ecc71; 
+        --orange: #f39c12; 
+        --bg: #f4f7f9; 
+        --slate: #334155;
+    }
 
-                      <!-- Navbar -->
-                      <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-                        <span class="navbar-brand"><strong>SMS FUEL PTY LTD</strong></span>
-                      </nav>
-                      {% include "sidebar.html" %}
-                       <!-- ================= FLASH MESSAGES ================= -->
-                        {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                          <div class="flash-container">
-                            {% for category, message in messages %}
-                              <div class="flash-message {{ category }}">{{ message }}</div>
-                            {% endfor %}
-                          </div>
-                        {% endif %}
-                        {% endwith %}
+    body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; font-size: 12px; color: var(--slate);}
 
-                        <!-- Auto-hide flash messages -->
-                        <script>
-                          setTimeout(() => {
-                            document.querySelectorAll(".flash-message").forEach(msg => {
-                              msg.style.opacity = "0";
-                              setTimeout(() => msg.remove(), 500);
-                            });
-                          }, 3000);
-                        </script>
-                      <div class="main-content">
-                      
-                      </div>
-                      
-                      <!-- Content -->
-                      <div class="content-wrapper p-3">
-                        {% block content %}{% endblock %}
-                      </div>
+    /* Apply transition to both Header and Content Wrapper */
+    .content-wrapper, 
+    .main-header {
+        transition: margin-left var(--sidebar-transition), width var(--sidebar-transition) !important;
+        margin-left: var(--expanded-width) !important;
+        width: calc(100% - var(--expanded-width)) !important;
+    }
 
-          </div>
-         
-          <!-- Sidebar JS -->
-          <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
-          <script src="{{ url_for('static', filename='plugins/jquery/jquery.min.js') }}"></script>
-          <script src="{{ url_for('static', filename='plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-          <script src="{{ url_for('static', filename='dist/js/adminlte.min.js') }}"></script>
-          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-          <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-          
+    /* When the sidebar is collapsed (AdminLTE class) */
+    .sidebar-collapse .content-wrapper,
+    .sidebar-collapse .main-header {
+        margin-left: var(--collapsed-width) !important;
+        width: calc(100% - var(--collapsed-width)) !important;
+    }
 
-          <script>
-            console.log("Sidebar JS loaded");
+    /* Force the sidebar itself to use the same transition (in case it's in sidebar.html) */
+    #sidebar {
+        transition: width var(--sidebar-transition), margin-left var(--sidebar-transition) !important;
+    }
 
-            document.addEventListener("DOMContentLoaded", function () {
-              document.querySelectorAll(".has-sub > a").forEach(function (menu) {
-                menu.addEventListener("click", function (e) {
-                  e.preventDefault();
-                  this.parentElement.classList.toggle("open");
-                });
-              });
-            });
-          </script>
+    /* --- BEAUTY & LAYOUT --- */
+    .main-header {
+        background: rgba(255, 255, 255, 0.9) !important;
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(0,0,0,0.05) !important;
+        z-index: 1030;
+    }
+
+    body {
+        background-color: #f4f7f9;
+    }
+
+    /* Prevent horizontal scroll during transition */
+    .wrapper {
+        overflow-x: hidden;
+    }
+    /* --- FLASH MESSAGES --- */
+    .alert { padding: 12px 20px; margin-bottom: 20px; border-radius: 8px; color: white; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .alert-success { background: var(--green); }
+    .alert-danger { background: var(--red); }
+
+</style>
+</head>
+
+<body class="hold-transition sidebar-mini layout-fixed">
+    <div class="wrapper">
+
+        <nav class="main-header navbar navbar-expand navbar-white navbar-light shadow-sm">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm px-3 ms-2 mt-1 shadow-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i> LOGOUT
+                    </a>
+                </li>
+            </ul>
+
+            <div class="mx-auto order-0 d-none d-md-block">
+                <span class="navbar-brand m-0">
+                    <strong>HIPPO TRANSPORT</strong>
+                </span>
+            </div>
+            <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+                <div  class="nav-link  rounded-pill px-3 py-1 mt-1 border fw-bold">
+                <button onclick="openCalendar()" class="nav-link" style="background:none; border:none; cursor:pointer; color: rgba(84, 84, 85, 0.639);">
+                    <i class="fas fa-calendar-alt"></i> Schedule
+                </button>
+                </div>
+            </li>
+            </ul>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <div id="liveClock" class="nav-link rounded-pill px-3 py-1 mt-1 border fw-bold">
+                        <i class="far fa-clock text-primary me-2"></i> Loading...
+                    </div>
+                </li>
+            </ul>
+            
+        </nav>
+
+        {% include "sidebar.html" %}
         
+        <div class="content-wrapper">
+            
 
-    </body>
+            
+
+            <div class="content-padding">
+                
+                <div class="container-fluid">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="calendarModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; width:90%; max-width:500px; padding:25px; border-radius:15px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+            <h3 style="margin:0;">Hippo <span style="color:#2563eb;">Scheduler</span></h3>
+            <button onclick="closeCalendar()" style="border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        
+        <form action="/calendar/add" method="POST">
+            <div style="margin-bottom:15px;">
+                <label style="font-size:0.8rem; font-weight:700;">TYPE</label>
+                <select name="event_type" class="form-control" required>
+                    <option value="BOOKING">Truck Booking</option>
+                    <option value="SERVICE">Service/Maintenance</option>
+                    <option value="REMINDER">General Reminder</option>
+                </select>
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="font-size:0.8rem; font-weight:700;">TITLE (e.g. HTD133FS)</label>
+                <input type="text" name="title" placeholder="HTD133FS BOOKING" class="form-control" required>
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="font-size:0.8rem; font-weight:700;">DATE</label>
+                <input type="date" name="event_date" class="form-control" required>
+            </div>
+            <button type="submit" class="btn-primary-custom" style="width:100%; padding:12px;">Set Appointment</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCalendar() { document.getElementById('calendarModal').style.display = 'flex'; }
+function closeCalendar() { document.getElementById('calendarModal').style.display = 'none'; }
+</script>
+
+    <script src="{{ url_for('static', filename='plugins/jquery/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/js/adminlte.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggleBtn = document.getElementById('toggleSidebar'); // Your custom button
+        const body = document.body;
+
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function () {
+                // Toggle the AdminLTE class so the layout knows to shift
+                body.classList.toggle('sidebar-collapse');
+                
+                // Trigger a resize so your Charts and Tables fill the new space
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 300);
+            });
+        }
+
+        // Clock Logic
+        function updateClock() {
+            const now = new Date();
+            const options = { 
+                weekday: 'short', day: '2-digit', month: 'short', 
+                year: 'numeric', hour: '2-digit', minute: '2-digit', 
+                second: '2-digit', hour12: true 
+            };
+            const clock = document.getElementById('liveClock');
+            if(clock) clock.innerHTML = '<i class="far fa-calendar-alt text-primary me-2"></i>' + now.toLocaleString('en-GB', options);
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    });
+
+    function dismissAlert(eventId, elementId) {
+    // 1. Tell Python to stop showing this specific ID
+    fetch('/dismiss-reminder/' + event_id);
+    
+    // 2. Remove it from the screen immediately
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.style.opacity = '0';
+        setTimeout(() => element.remove(), 300);
+    }
+}
+</script>
+</body>
 </html>

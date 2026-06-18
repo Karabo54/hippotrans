@@ -1,0 +1,5 @@
+serial_no,size,brand,purchase_date,cost,supplier,status,truck_reg,position,km_fitted,driver_name,installer,km_removed,removal_reason,disposition,total_km
+DOT12457BG,385/65 R22.5,GOOD YEAR,2026-03-03,3600,MDLOKOVAN,Scrap,,,592301,Daniel Mqwasho,MTD,600324,Worn Out,Scrap,8023
+DOT125BGC,385/65 R22.5,GOOD YEAR,2026-03-03,3600,MDLOKOVAN,Retread,,,805,Daniel Mqwasho,MTD,809,Worn Out,Retread,4
+DOT12457BGH,385/65 R22.5,GOOD YEAR,2026-03-10,3600,MDLOKOVAN,Fitted,,Front Right (Steer),123456,Daniel Mqwasho,MTD,,,,0
+FJHJHDDFDG,385/65 R22.5,GOOD YEAR,2026-04-15,1205445,MDLOKOVAN,Stock,,,,,,,,,0

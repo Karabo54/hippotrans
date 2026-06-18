@@ -1,133 +1,201 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="page">
-  <h2><strong>Truck Breakdowns</strong></h2>
-
-  <!-- Flash Messages -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="flash-container">
-        {% for category, message in messages %}
-          <div class="flash-message {{ category }}">{{ message }}</div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
-
-  <!-- ================= SUMMARY CARDS ================= -->
-  {% set active_breakdowns = breakdowns | selectattr("status", "in", ["REPORTED", "IN REPAIR"]) | list | length %}
-  {% set repaired_breakdowns = breakdowns | selectattr("status", "equalto", "REPAIRED") | list | length %}
-  {% set total_cost = breakdowns | selectattr("repair_cost") | map(attribute="repair_cost") | map("float", default=0) | sum %}
-  {% set avg_downtime = (breakdowns | selectattr("downtime_hours") | map(attribute="downtime_hours") | map("float", default=0) | list | sum / (repaired_breakdowns if repaired_breakdowns > 0 else 1)) | round(2) %}
-
-  <div class="summary-cards">
-    <div class="summary-card alert-border">
-      <h3>Active Breakdowns</h3>
-      <p class="big-number">{{ active_breakdowns }}</p>
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-navy mb-0">Truck Breakdowns</h2>
+            <p class="text-muted small">Manage fleet repairs and mechanical issues</p>
+        </div>
+        <button type="button" class="btn btn-primary shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#reportModal">
+            <i class="fas fa-plus-circle me-2"></i>Report Breakdown
+        </button>
     </div>
+<!-----------------------------------------------------CARDS SECTION-------------------------------------------------------------------->
+    {% set active_breakdowns = breakdowns | selectattr("status", "in", ["REPORTED", "IN REPAIR"]) | list | length %}
+    {% set repaired_breakdowns = breakdowns | selectattr("status", "equalto", "REPAIRED") | list | length %}
+    {% set total_cost = breakdowns | selectattr("repair_cost") | map(attribute="repair_cost") | map("float", default=0) | sum %}
+    {% set avg_downtime = (breakdowns | selectattr("downtime_hours") | map(attribute="downtime_hours") | map("float", default=0) | list | sum / (repaired_breakdowns if repaired_breakdowns > 0 else 1)) | round(2) %}
 
-    <div class="summary-card">
-      <h3>Repaired This Period</h3>
-      <p class="big-number">{{ repaired_breakdowns }}</p>
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-danger border-4 p-3">
+                <h6 class="text-muted small text-uppercase fw-bold">Active Breakdowns</h6>
+                <h3 class="fw-bold mb-0 text-danger">{{ active_breakdowns }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-success border-4 p-3">
+                <h6 class="text-muted small text-uppercase fw-bold">Repaired This Period</h6>
+                <h3 class="fw-bold mb-0 text-success">{{ repaired_breakdowns }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-primary border-4 p-3">
+                <h6 class="text-muted small text-uppercase fw-bold">Total Repair Cost</h6>
+                <h3 class="fw-bold mb-0 text-primary">R {{ "{:,.2f}".format(total_cost) }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-info border-4 p-3">
+                <h6 class="text-muted small text-uppercase fw-bold">Avg Downtime</h6>
+                <h3 class="fw-bold mb-0 text-info">{{ avg_downtime }} <small>hrs</small></h3>
+            </div>
+        </div>
     </div>
+<!-------------------------------------------------CARDS SECTION END------------------------------------------------------------->
+<!-------------------------------------------------TABLE SECTION------------------------------------------------------------->
+    <div class="card shadow-sm border-0 overflow-hidden" style="border-radius: 12px;">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr class="text-muted small text-uppercase">
+                        <th class="ps-3">ID / Truck</th>
+                        <th>Driver</th>
+                        <th>Location & Issue</th>
+                        <th>Date Reported</th>
+                        <th>Status</th>
+                        <th>Financials</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in breakdowns %}
+                    <tr {% if b.status != 'REPAIRED' %}class="table-light"{% endif %}>
+                        <td class="ps-3">
+                            <div class="fw-bold text-primary">{{ b.truck_reg }}</div>
+                            <small class="text-muted">#{{ b.breakdown_id }}</small>
+                        </td>
+                        <td>{{ b.driver }}</td>
+                        <td>
+                            <div class="fw-bold">{{ b.location }}</div>
+                            <div class="small text-muted text-truncate" style="max-width: 200px;">{{ b.issue_description }}</div>
+                        </td>
+                        <td>
+                            <div>{{ b.reported_date }}</div>
+                            <small class="text-muted">{{ b.reported_time }}</small>
+                        </td>
+                        <td>
+                            {% if b.status == 'REPORTED' %}
+                                <span class="badge rounded-pill bg-danger">REPORTED</span>
+                            {% elif b.status == 'IN REPAIR' %}
+                                <span class="badge rounded-pill bg-warning text-dark">IN REPAIR</span>
+                            {% elif b.status == 'SEEN' %}
+                                <span class="badge rounded-pill bg-warning text-dark">IN REPAIR</span>
+                            {% else %}
+                                <span class="badge rounded-pill bg-success">REPAIRED</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="fw-bold">R {{ b.repair_cost or '0.00' }}</div>
+                            <small class="text-muted">{{ b.workshop or 'No Workshop' }}</small>
+                        </td>
+                        <td class="text-end pe-3">
+                            <div class="btn-group shadow-sm border rounded">
+                               <!-- {# STEP 1: Operations Reports -> Workshop converts to Job Card #}
+                                {% if b.status == 'REPORTED' %}
+                                <a href="/breakdowns/to_workshop/{{ b.breakdown_id }}" 
+                                class="btn btn-white btn-sm px-3" 
+                                title="Create Job Card"
+                                onclick="return confirm('Convert this breakdown into a Workshop Job Card?')">
+                                    <i class="fas fa-tools text-warning"></i>
+                                </a>
+                                {% endif %}-->
 
-    <div class="summary-card">
-      <h3>Total Repair Cost</h3>
-      <p class="big-number">R {{ total_cost }}</p>
+                                
+
+                                {# STEP 3: Repaired -> Download PDF #}
+                                {% if b.status == 'REPAIRED' %}
+                                <a href="/breakdowns/pdf/{{ b.breakdown_id }}" class="btn btn-white btn-sm px-3" title="Download PDF Job Card">
+                                    <i class="fas fa-file-pdf text-danger"></i>
+                                </a>
+                                {% endif %}
+
+                                {# Edit/Delete available for all #}
+                                <button class="btn btn-white btn-sm px-3 border-start" data-bs-toggle="modal" data-bs-target="#editModal{{ b.breakdown_id }}">
+                                    <i class="fas fa-edit text-primary"></i>
+                                </button>
+                                <a href="/breakdowns/delete/{{ b.breakdown_id }}" class="btn btn-white btn-sm px-3 border-start" onclick="return confirm('Delete this record permanently?')">
+                                    <i class="fas fa-trash text-danger"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>         
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-
-    <div class="summary-card">
-      <h3>Avg Downtime</h3>
-      <p class="big-number">{{ avg_downtime }} hrs</p>
-    </div>
-  </div>
-
-  <!-- ================= ADD BREAKDOWN FORM ================= -->
-  <div class="card">
-    <h3>Report Breakdown</h3>
-    <form method="POST" action="/breakdowns" class="form-grid">
-
-      <input type="date" name="reported_date" required>
-      <input type="time" name="reported_time" required>
-
-      <select name="truck_reg" required>
-        <option value="">Select Truck</option>
-        {% for v in vehicles %}
-          <option value="{{ v.truck_reg }}">{{ v.truck_reg }}</option>
-        {% endfor %}
-      </select>
-
-      <select name="driver" required>
-        <option value="">Select Driver</option>
-        {% for d in drivers %}
-          <option value="{{ d.driver_name }}">{{ d.driver_name }}</option>
-        {% endfor %}
-      </select>
-
-      <input type="number" name="km_at_breakdown" placeholder="KM at Breakdown" required>
-      <input type="text" name="location" placeholder="Breakdown Location" required>
-      <input type="text" name="issue_description" placeholder="Issue Description" required>
-
-      <button type="submit" class="add-btn">➕ Report Breakdown</button>
-    </form>
-  </div>
-
-  <!-- ================= BREAKDOWNS TABLE ================= -->
-  <div class="table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Truck</th>
-          <th>Driver</th>
-          <th>Location</th>
-          <th>Issue</th>
-          <th>Date</th>
-          <th>Time</th>
-          <th>KM</th>
-          <th>Status</th>
-          <th>Repair Cost</th>
-          <th>Workshop</th>
-          <th>Downtime (hrs)</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for b in breakdowns %}
-        <tr class="{% if b.status != 'REPAIRED' %}row-alert{% endif %}">
-          <td>{{ b.breakdown_id }}</td>
-          <td>{{ b.truck_reg }}</td>
-          <td>{{ b.driver }}</td>
-          <td>{{ b.location }}</td>
-          <td>{{ b.issue_description }}</td>
-          <td>{{ b.reported_date }}</td>
-          <td>{{ b.reported_time }}</td>
-          <td>{{ b.km_at_breakdown }}</td>
-          <td>{{ b.status }}</td>
-          <td>{{ b.repair_cost }}</td>
-          <td>{{ b.workshop }}</td>
-          <td>{{ b.downtime_hours }}</td>
-
-          <td>
-            <form method="POST" action="/breakdowns/update/{{ b.breakdown_id }}">
-              <select name="status">
-                <option value="REPORTED" {% if b.status == "REPORTED" %}selected{% endif %}>REPORTED</option>
-                <option value="IN REPAIR" {% if b.status == "IN REPAIR" %}selected{% endif %}>IN REPAIR</option>
-                <option value="REPAIRED" {% if b.status == "REPAIRED" %}selected{% endif %}>REPAIRED</option>
-              </select>
-              <input type="number" step="0.01" name="repair_cost" placeholder="Cost">
-              <input type="text" name="workshop" placeholder="Workshop">
-              <input type="text" name="notes" placeholder="Notes">
-              <button type="submit">💾</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
 </div>
+
+<div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+            <div class="modal-header bg-navy text-white" style="border-radius: 15px 15px 0 0;">
+                <h5 class="modal-title fw-bold"><i class="fas fa-file-medical me-2"></i>Report New Breakdown</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/breakdowns">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-uppercase">Date</label>
+                            <input type="date" name="reported_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-uppercase">Time</label>
+                            <input type="time" name="reported_time" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-uppercase">Truck Registration</label>
+                            <select name="truck_reg" class="form-select" required>
+                                <option value="">Select Truck</option>
+                                {% for v in vehicles %}
+                                <option value="{{ v.truck_reg }}">{{ v.truck_reg }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-uppercase">Driver Name</label>
+                            <select name="driver" class="form-select" required>
+                                <option value="">Select Driver</option>
+                                {% for d in drivers %}
+                                    <option value="{{ d['NAME/SURNAME'] }}">{{ d['NAME/SURNAME'] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-uppercase">KM at Breakdown</label>
+                            <input type="number" name="km_at_breakdown" class="form-control" placeholder="Current Odometer" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-uppercase">Location</label>
+                            <input type="text" name="location" class="form-control" placeholder="e.g. N1 South, Bloemfontein" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-uppercase">Issue Description</label>
+                            <textarea name="issue_description" class="form-control" rows="3" placeholder="Explain the mechanical issue..." required></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-5 shadow">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-navy { background-color: #001f3f; }
+    .text-navy { color: #001f3f; }
+    .btn-white { background-color: #fff; border: none; }
+    .btn-white:hover { background-color: #f8f9fa; }
+    .badge { font-weight: 600; padding: 0.5em 0.8em; }
+    .table thead th { border-top: none; padding: 12px 15px; }
+    .table td { padding: 12px 15px; }
+    .btn-group .btn { border-color: #dee2e6 !important; }
+</style>
 
 {% endblock %}

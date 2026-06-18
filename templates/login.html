@@ -1,0 +1,127 @@
+<style>
+    body {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .login-card {
+        background: rgba(255, 255, 255);
+        border-radius: 16px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        width: 100%;
+        max-width: 420px;
+        padding: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .brand-logo {
+        color: #f59e0b; /* Fuel/Amber Orange */
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 5px;
+        display: block;
+        text-align: center;
+    }
+
+    .brand-subtext {
+        color: #64748b;
+        text-align: center;
+        display: block;
+        font-size: 0.85rem;
+        margin-bottom: 30px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .form-label {
+        color: #334155;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        padding: 12px 15px;
+        border: 1px solid #cbd5e1;
+        background-color: #f8fafc;
+        transition: all 0.2s;
+    }
+
+    .form-control:focus {
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+        background-color: #ffffff;
+    }
+
+    .btn-login {
+        background: #0f172a;
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        margin-top: 10px;
+        transition: all 0.3s;
+    }
+
+    .btn-login:hover {
+        background: #f59e0b;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        color: #ffffff;
+    }
+
+    .footer-text {
+        text-align: center;
+        margin-top: 25px;
+        font-size: 0.75rem;
+        color: #94a3b8;
+    }
+</style>
+
+<div class="login-card">
+    <div class="text-center">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="SMS FUEL Logo" style="max-height: 80px; width: auto;">
+        
+        <span class="brand-subtext"></span>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} py-2 small shadow-sm">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Username</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted border-end-0"><i class="fas fa-user"></i></span>
+                <input type="text" name="username" class="form-control border-start-0" placeholder="Enter username" required>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-bold">Password</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted border-end-0"><i class="fas fa-lock"></i></span>
+                <input type="password" name="password" class="form-control border-start-0" placeholder="••••••••" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-login w-100">
+            Sign In to Dashboard <i class="fas fa-arrow-right ms-2"></i>
+        </button>
+    </form>
+
+    <div class="footer-text">
+        &copy; 2026 SMS FUEL PTY LTD. All rights reserved.
+    </div>
+</div>

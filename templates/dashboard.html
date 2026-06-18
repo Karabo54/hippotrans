@@ -1,192 +1,826 @@
 {% extends "base.html" %}
 {% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    
+    /* Styling for a "Soft" look */
+    .bg-danger-soft { background-color: #fee2e2; color: #b91c1c; }
+    .bg-success-soft { background-color: #dcfce7; color: #15803d; }
+    .table-hover tbody tr:hover { background-color: #f8fafc; }
 
-<div class="dashboard-header">
-  <div>
-    <h5>Welcome to SMS Fuel PTY LTD 👋</h5>
-  </div>
-  <div class="dashboard-datetime">
-    <p id="date-time"></p>
-  </div>
-</div>
-
-<h1>Dashboard</h1>
-
-<div class="dashboard-cards">
-
-  <div class="card">
-    <div class="card-icon blue-bg">🚛</div>
-    <div class="card-content">
-      <p class="card-label">Total Vehicles</p>
-      <h3 class="card-value blue-text">{{ stats.total_vehicles }}</h3>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-icon green-bg">✅</div>
-    <div class="card-content">
-      <p class="card-label">Active Vehicles</p>
-      <h3 class="card-value green-text">{{ stats.active_vehicles }}</h3>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-icon purple-bg">📦</div>
-    <div class="card-content">
-      <p class="card-label">Total Trips</p>
-      <h3 class="card-value grey-text">{{ stats.total_trips }}</h3>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-icon red-bg">🛑</div>
-    <div class="card-content">
-      <p class="card-label">Open Breakdowns</p>
-      <h3 class="card-value orange-text">{{ stats.open_breakdowns }}</h3>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-icon red-bg">📄</div>
-    <div class="card-content">
-      <p class="card-label">Expired Docs</p>
-      <h3 class="card-value red-text">{{ stats.expired_docs_count }}</h3>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-icon yellow-bg">⏳</div>
-    <div class="card-content">
-      <p class="card-label">Docs Almost Due</p>
-      <h3 class="card-value orange-text">{{ stats.almost_due_docs_count }}</h3>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-icon blue-bg">⛽</div>
-    <div class="card-content">
-      <p class="card-label">Total Fuel (L)</p>
-      <h3 class="card-value blue-text">{{ stats.total_fuel }}</h3>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-icon green-bg">💰</div>
-    <div class="card-content">
-      <p class="card-label">Fuel Cost</p>
-      <h3 class="card-value green-text">R {{ stats.fuel_cost }}</h3>
-    </div>
-  </div>
-</div>
-
-<div class="alerts-grid">
-
-  <div class="alert-card danger">
-    <h4>🚨 Expired Compliance</h4>
-    {% if expired_docs %}
-      <ul>
-        {% for doc in expired_docs %}
-          <li>{{ doc.truck_reg }} – {{ doc.doc_type }} ({{ doc.expiry_date }})</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>No expired documents 🎉</p>
-    {% endif %}
-  </div>
-
-  <div class="alert-card warning">
-    <h4>⏳ Almost Due</h4>
-    {% if almost_due_docs %}
-      <ul>
-        {% for doc in almost_due_docs %}
-          <li>{{ doc.truck_reg }} – {{ doc.doc_type }} ({{ doc.days_left }} days left)</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>No documents nearing expiry ✅</p>
-    {% endif %}
-  </div>
-
-  <div class="alert-card info">
-    <h4>🛠 Open Breakdowns</h4>
-    {% if open_breakdowns %}
-      <ul>
-        {% for b in open_breakdowns %}
-          <li>{{ b.truck_reg }} – {{ b.issue }}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>No active breakdowns 🚛</p>
-    {% endif %}
-  </div>
-
-</div>
-
-<div class="analytics-grid">
-
-  <div class="chart-card">
-    <h4>Trips Per Month</h4>
-    <canvas id="tripsChart"></canvas>
-  </div>
-
-  <div class="chart-card">
-    <h4>Fuel Usage Per Truck</h4>
-    <canvas id="fuelChart"></canvas>
-  </div>
-
-</div>
-
-<!-- ===== Data from Flask ===== -->
-<script>
-  const tripsByMonth = {{ trips_by_month | tojson }};
-  const fuelByTruck = {{ fuel_by_truck | tojson }};
-</script>
-
-<!-- ===== Dashboard Logic ===== -->
-<script>
-  // ===== Live Date & Time =====
-  function updateDateTime() {
-    const now = new Date();
-    const options = {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    };
-    document.getElementById("date-time").innerText = now.toLocaleString('en-ZA', options);
-  }
-  setInterval(updateDateTime, 1000);
-  updateDateTime();
-
-  // ===== Prepare Chart Data =====
-  const tripsLabels = Object.keys(tripsByMonth);
-  const tripsData = Object.values(tripsByMonth);
-
-  const fuelLabels = Object.keys(fuelByTruck);
-  const fuelData = Object.values(fuelByTruck);
-
-  // ===== Charts =====
-  const tripsCtx = document.getElementById('tripsChart').getContext('2d');
-  new Chart(tripsCtx, {
-    type: 'bar',
-    data: {
-      labels: tripsLabels,
-      datasets: [{
-        label: 'Trips per Month',
-        data: tripsData,
-      }]
+    .destination-card {
+        flex: 0 0 350px; /* Do not grow, do not shrink, stay at 350px */
+        width: 350px;
+        min-width: 350px;
+        background: #ffffff;
+        border-radius: 12px;
+        overflow: hidden; /* This stops the table from sticking out! */
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #e2e8f0;
     }
-  });
-
-  const fuelCtx = document.getElementById('fuelChart').getContext('2d');
-  new Chart(fuelCtx, {
-    type: 'bar',
-    data: {
-      labels: fuelLabels,
-      datasets: [{
-        label: 'Fuel Used (Litres)',
-        data: fuelData,
-      }]
+    
+    .destination-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
     }
-  });
-</script>
+    .dest-header {
+        background: linear-gradient(45deg, #e8eaee, #334155);
+        color: white;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 12px 15px;
+    }
+    .dest-point-name {
+        letter-spacing: 1px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+    }
+    /* 3. Make the table behave inside a small card */
+    .truck-table {
+        width: 100% !important;
+        margin-bottom: 0;
+        table-layout:auto; /* Forces columns to stay inside the width */
+    }
+    .truck-table thead th {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        border-top: none;
+    }
+    .truck-row td {
+        padding: 10px 15px !important;
+        vertical-align: middle;
+        font-size: 0.8rem;
+        overflow-y: auto;
+        text-overflow: ellipsis; /* Adds '...' if the name is too long */
+    }
+    .product-tag {
+        background: #f1f5f9;
+        color: #475569;
+        font-weight: 700;
+        font-size: 0.65rem;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+    }
+    .dest-container {
+        display: flex;
+        flex-wrap: nowrap; /* Prevent cards from dropping to next line */
+        gap: 25px;
+        overflow-x: auto;
+        padding: 20px 10px;
+        width: 100%;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .dest-container::-webkit-scrollbar {
+        height: 6px;
+    }
+    .dest-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+</style>
+<div class="page" style="background: #f8f9fc; padding: 20px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 style="font-weight: 700; color: #2c3e50; margin: 0;">📊 WELCOME TO HIPPO TRANSPORT</h2>
+        <span class="badge badge-primary" style="padding: 10px; font-size: 0.9rem;">MTD: {{ now.strftime('%B %Y') }}</span>
+    </div>
 
+    <div class="dashboard-cards mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <!--div class="card kpi-card">
+            <span class="label">Revenue (MTD)</span>
+            <h3 class="value text-success">R {{ "{:,.2f}".format(stats.revenue_mtd) }}</h3>
+        </div--->
+        <div class="card kpi-card">
+            <span class="label">Litres Delivered (MTD)</span>
+            <h3 class="value text-success">
+                {{ "{:,.0f}".format(mtd_litres) }}L
+            </h3>
+        </div>
+        <div class="card kpi-card">
+            <span class="label">Fuel Consumed</span>
+            <h3 class="value text-primary">{{ "{:,.0f}".format(stats.fuel_mtd) }} L</h3>
+        </div>
+        <div class="card kpi-card">
+            <span class="label">Trips Completed</span>
+            <h3 class="value">{{ stats.trips_mtd }}</h3>
+        </div>
+        <div class="card kpi-card">
+            <span class="label">Total Distance</span>
+            <h3 class="value">{{ "{:,.0f}".format(stats.km_mtd) }} KM</h3>
+        </div>
+        <div class="card kpi-card">
+            <span class="label">Worked Hours</span>
+            <h3 class="value">{{ stats.work_hours_mtd }} Hrs</h3>
+        </div>
+    </div>
+
+
+<div class="row mb-4 d-flex align-items-stretch"> <div class="col-lg-6 mb-4 mb-lg-0">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 24px; background: #ffffff; padding: 1.5rem;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0 fw-bold" style="color: #1e293b; letter-spacing: -0.02em;">
+                    <i class="fas fa-truck-loading me-2 text-primary"></i> Outstanding Orders
+                </h5>
+                <span class="badge rounded-pill bg-light text-dark px-3 py-2" style="font-size: 0.75rem;">Real-time</span>
+            </div>
+
+            <div class="table-responsive flex-grow-1"> <table class="table align-middle" style="border-collapse: separate; border-spacing: 0 0.75rem;">
+                    <thead>
+                        <tr class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;">
+                            <th class="ps-3 border-0">Customer</th>
+                            <th class="text-center border-0">ULP95</th>
+                            <th class="text-center border-0">ADO</th>
+                            <th class="text-center border-0">ADO(CLP)</th>
+                            <th class="text-center border-0">IK</th>
+                            <th class="text-end pe-3 border-0">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for point in outstanding_summary %}
+                        <tr class="bg-white" style="transition: all 0.2s ease; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <td class="ps-3 fw-bold text-dark" style="border-top-left-radius: 12px; border-bottom-left-radius: 12px;">{{ point.name }}</td>
+                            <td class="text-center text-muted">{{ point.ulp95 }}</td>
+                            <td class="text-center text-muted">{{ point.ado }}</td>
+                            <td class="text-center text-muted">{{ point.adoCLP }}</td>
+                            <td class="text-center text-muted">{{ point.ik }}</td>
+                            <td class="text-end pe-3 fw-bolder text-primary" style="border-top-right-radius: 12px; border-bottom-right-radius: 12px;">
+                                {{ (point.ulp95 | float) + (point.ado | float) + (point.adoCLP | float) + (point.ik | float) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4 mb-lg-0">
+        <div class="card shadow-sm border-0 h-100" style="border-radius: 24px; background: #ffffff; overflow: hidden;">
+            <div class="card-header bg-white border-0 p-4 pb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0" style="font-weight: 800; color: #1e293b;">
+                        <i class="fas fa-truck-loading text-primary me-2"></i>UNUTILIZED FLEET
+                    </h5>
+                    <span class="badge rounded-pill bg-soft-warning text-warning border border-warning px-3">
+                        {{ idle_fleet|length }} Trucks Idle
+                    </span>
+                </div>
+                <p class="text-muted small mt-2">Trucks currently not in transit, sorted by downtime.</p>
+            </div>
+
+            <div class="card-body p-0 d-flex flex-column"> <div class="table-responsive flex-grow-1" style="max-height: 450px;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light sticky-top">
+                            <tr>
+                                <th class="ps-4 border-0 small fw-bold text-muted">TRUCK REG</th>
+                                <th class="border-0 small fw-bold text-muted">STATUS</th>
+                                <th class="border-0 small fw-bold text-muted">DOWNTIME</th>
+                                <th class="pe-4 border-0 text-end small fw-bold text-muted">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for truck in idle_fleet %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="fw-bold text-dark">{{ truck.reg }}</div>
+                                </td>
+                                <td>
+                                    {% if truck.status == 'BREAKDOWN' %}
+                                        <span class="badge bg-danger-soft text-danger" style="background: #fef2f2; color: #dc2626; padding: 0.5rem;">
+                                            <i class="fas fa-tools me-1"></i> REPAIRS
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success-soft text-success" style="background: #f0fdf4; color: #16a34a; padding: 0.5rem;">
+                                            <i class="fas fa-check-circle me-1"></i> READY
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="fw-bold {% if truck.days_raw >= 2 %}text-danger{% else %}text-muted{% endif %}">
+                                        {{ truck.idle_time }}
+                                    </span>
+                                </td>
+                                <td class="pe-4 text-end">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" style="font-size: 0.7rem;">
+                                        Assign
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if not idle_fleet %}
+                <div class="text-center py-5 flex-grow-1 d-flex flex-column justify-content-center">
+                    <i class="fas fa-road fa-3x text-light mb-3"></i>
+                    <p class="text-muted">All trucks are currently in transit.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="summary-card-v2 border-left-blue-accent h-100 shadow-sm p-3">
+            <h3 style="font-size: 1.1rem; font-weight: 700;">Fleet Status</h3>
+            <div class="card-body-v2">
+                <div class="stat-row-v2 d-flex justify-content-between mb-2"><span>Inactive Trucks</span> <span class="badge badge-success">{{ stats.active_trucks }}</span></div>
+                <div class="stat-row-v2 d-flex justify-content-between mb-2"><span>In Transit</span> <span class="badge badge-primary">{{ stats.in_transit }}</span></div>
+                <div class="stat-row-v2 d-flex justify-content-between mb-2"><span>Breakdowns</span> <span class="badge badge-danger">{{ stats.active_breakdowns }}</span></div>
+                <p class="status-msg-v2 text-muted mt-3 mb-0 small">
+                    {% if stats.active_breakdowns > 0 %}
+                        ⚠️ {{ stats.active_breakdowns }} vehicles require attention
+                    {% else %}
+                        ✅ All vehicles operational
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="summary-card-v2 border-left-orange-accent h-100 shadow-sm p-3">
+    <h3 style="font-size: 1.1rem; font-weight: 700;">
+        <i class="fas fa-users-cog me-2 text-primary"></i>Human Resources
+    </h3>
+    <hr class="my-2 opacity-25">
+    <div class="card-body-v2">
+        <div class="stat-row-v2 d-flex justify-content-between mb-2">
+            <span>Active Drivers</span> 
+            <span class="badge bg-success rounded-pill px-3">{{ stats.active_drivers }}</span>
+        </div>
+
+        <div class="stat-row-v2 d-flex justify-content-between mb-2">
+            <span>Pending Food</span> 
+            <span class="badge bg-warning text-dark rounded-pill px-3">{{ stats.pending_allowance }}</span>
+        </div>
+
+        <div class="stat-row-v2 d-flex justify-content-between mb-2">
+            <span>Incidents (MTD)</span> 
+            <span class="badge bg-danger rounded-pill px-3">{{ stats.incidents_mtd }}</span>
+        </div>
+
+        <p class="status-msg-v2 text-muted mt-3 mb-0 small">
+            <i class="fas fa-info-circle me-1"></i> 
+            {{ stats.pending_allowance }} food allowances require approval.
+        </p>
+    </div>
+</div>
+    </div>
+    <div class="col-lg-4 col-md-6 mb-3">
+    <div class="summary-card-v2 border-left-blue-accent h-100 shadow-sm p-3">
+        <h3 style="font-size: 1.1rem; font-weight: 700;" class="mb-3">Truck Service Status</h3>
+        
+        <div class="card-body-v2">
+            {% if stats.service_alerts %}
+                <div class="service-list" style="max-height: 250px; overflow-y: auto;">
+                    {% for alert in stats.service_alerts %}
+                        <div class="mb-3 p-2 rounded {% if alert.status == 'OVERDUE' %}bg-light-danger{% elif alert.status == 'DUE' %}bg-light-warning{% else %}bg-light{% endif %}" 
+                             <div style="border-left: 4px solid {% if alert.status == 'OVERDUE' %}#dc3545{% elif alert.status == 'DUE' %}#ffc107{% else %}#0d6efd{% endif %};">
+                            
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong style="font-size: 0.95rem; display: block;">{{ alert.reg }}</strong>
+                                    <span class="badge {% if alert.status == 'OVERDUE' %}bg-danger{% elif alert.status == 'DUE' %}bg-warning text-dark{% else %}bg-primary{% endif %} mb-1">
+                                        {{ alert.status }}
+                                    </span>
+                                </div>
+                                <div class="text-end">
+                                    <span class="fw-bold d-block" style="font-size: 0.9rem;">
+                                        {% if alert.km_to_go <= 0 %}
+                                            {{ alert.km_to_go|abs }} km past
+                                        {% else %}
+                                            {{ alert.km_to_go }} km left
+                                        {% endif %}
+                                    </span>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Updated: {{ alert.last_update }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <div class="mb-3">
+                        <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="text-success fw-bold">All Vehicles Operational</h5>
+                    <p class="text-muted small">No trucks are within 2,000 km of their service interval.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div>
+   <div class="row mb-4">
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card alert-card-v3 shadow-sm" style="height: 300px;">
+            <div class="card-header-v3">
+                <div class="d-flex align-items-center">
+                    <div class="alert-pulse mr-2"></div>
+                    <h4 class="m-0" style="font-weight: 800; font-size: 0.8rem;">TRUCK COMPLIANCE</h4>
+                </div>
+                <span class="badge-count">{{ alerts.truck_docs|length }}</span>
+            </div>
+            <div class="card-body p-0" style="overflow-y: auto;">
+                <div class="alert-scroll-v3">
+                    {% if not alerts.truck_docs %}
+                        <div class="empty-state"><div class="check-icon">✓</div><p>All docs current</p></div>
+                    {% endif %}
+                    {% for item in alerts.truck_docs %}
+                    <div class="modern-alert-item expiring">
+                        <div class="alert-icon"><i class="fas fa-file-contract"></i></div>
+                        <div class="alert-content">
+                            <div class="alert-title" style="font-size: 0.8rem;">{{ item.unit }} <span class="alert-tag">Doc</span></div>
+                            <div class="alert-subtext" style="font-size: 0.6rem; color: #475569; font-weight: 600;">{{ item.doc }}</div>
+                            <div class="alert-meta" style="font-size: 0.65rem;">
+                                {% if item.days <= 0 %}
+                                    <span class="text-danger">EXPIRED ({{ item.days|abs }}d)</span>
+                                {% else %}
+                                    Expires in <strong>{{ item.days }}d</strong>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="alert-action" style="flex-shrink: 0; margin-left: auto;">
+                            <span class="date-pill" style="font-size: 0.55rem; white-space: nowrap;">{{ item.date }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card alert-card-v3 shadow-sm" style="height: 300px;">
+        <div class="card-header-v3" style="background: linear-gradient(45deg, #f3f6f2, #fefcfc);">
+            <div class="d-flex align-items-center">
+                <div class="alert-pulse mr-2" style="background: #a5b4fc;"></div>
+                <h4 class="m-0" style="font-weight: 800; font-size: 0.8rem; color: rgb(8, 8, 8);">DRIVER COMPLIANCE</h4>
+            </div>
+            <span class="badge-count">{{ alerts.driver_docs|length }}</span>
+        </div>
+        <div class="card-body p-0" style="overflow-y: auto;">
+            <div class="alert-scroll-v3">
+                {% if not alerts.driver_docs %}
+                    <div class="empty-state">
+                        <div class="check-icon" style="color: #4f46e5; border-color: #4f46e5;">✓</div>
+                        <p>All driver docs current</p>
+                    </div>
+                {% endif %}
+
+                {% for item in alerts.driver_docs %}
+                <div class="modern-alert-item expiring">
+                    <div class="alert-icon" style="color: #4f46e5;"><i class="fas fa-id-card"></i></div>
+                    <div class="alert-content">
+                        <div class="alert-title" style="font-size: 0.8rem; font-weight: 700;">
+                            {{ item.name }}
+                        </div>
+                        <div class="alert-subtext" style="font-size: 0.6rem; color: #475569; font-weight: 600;">
+                            {{ item.doc_type }}
+                        </div>
+                        <div class="alert-meta" style="font-size: 0.65rem;">
+                            {% if item.days <= 0 %}
+                                <span class="text-danger" style="font-weight: 800;">EXPIRED ({{ item.days|abs }}d ago)</span>
+                            {% else %}
+                                Due in <strong style="color: #4f46e5;">{{ item.days }} days</strong>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="alert-action" style="flex-shrink: 0; margin-left: auto;">
+                        <span class="date-pill" style="font-size: 0.55rem; background: #eef2ff; color: #3730a3;">{{ item.date }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card alert-card-v3 shadow-sm" style="height: 300px;">
+            <div class="card-header-v3">
+                <div class="d-flex align-items-center">
+                    <div class="alert-pulse mr-2" style="background: #fbbf24; box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7);"></div>
+                    <h4 class="m-0" style="font-weight: 800; font-size: 0.8rem;">OFF SCHEDULES</h4>
+                </div>
+                <span class="badge-count">{{ alerts.fatigue_home|length }}</span>
+            </div>
+            <div class="card-body p-0" style="overflow-y: auto;">
+                <div class="alert-scroll-v3">
+                    {% if not alerts.fatigue_home %}
+                        <div class="empty-state"><div class="check-icon">✓</div><p>Roster on track</p></div>
+                    {% endif %}
+                    {% for driver in alerts.fatigue_home %}
+                    <div class="modern-alert-item fatigue">
+                        <div class="alert-icon"><i class="fas fa-user-clock"></i></div>
+                        <div class="alert-content">
+                            <div class="alert-title" style="font-size: 0.75rem; font-weight: 700;">{{ driver.name }}</div>
+                            <div class="alert-subtext" style="font-size: 0.65rem; color: #475569;">Due for Home Leave</div>
+                            <div class="alert-meta" style="font-size: 0.65rem;">At work: <strong>{{ driver.days_at_work }} days</strong></div>
+                        </div>
+                        <div class="alert-action">
+                            <a href="{{ driver.wa_link }}" class="wa-btn-v3"><i class="fab fa-whatsapp"></i></a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="mt-4">
+    <div class="d-flex align-items-center mb-3">
+        <i class="fas fa-map-marked-alt text-primary me-2" style="font-size: 1.25rem;"></i>
+        <h3 class="m-0" style="font-weight: 800; font-size: 1.25rem; color: #1e293b;">LIVE DESTINATIONS</h3>
+    </div>
+
+    <div class="dest-container d-flex flex-wrap gap-3">
+        {% for point, trucks in offloading_groups.items() %}
+        <div class="card destination-card shadow-sm" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; min-width: 340px; flex: 1 1 calc(33.333% - 1rem);">
+            <div class="card-header dest-header d-flex justify-content-between align-items-center" style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 16px;">
+                <div>
+                    {# Safely inspect the first element of the list to extract the group's origin type #}
+                    {% set first_item = trucks[0] if trucks else none %}
+                    {% set origin = first_item.trip_type | upper if first_item and first_item.trip_type else 'ENGEN' %}
+                    
+                    <div class="dest-point-name" style="font-weight: 800; color: #1e293b; font-size: 0.95rem; text-transform: uppercase;">
+                        {% if origin == 'SECONDARY' %}
+                            Local Deliveries
+                        {% elif origin == 'PUMA' %}
+                            Puma Loads
+                        {% else %}
+                            {# Displays the city or depot destination name for Engen Bridging #}
+                            {{ point }} (Engen Bridging)
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 0.725rem; color: #64748b; font-weight: 600;" class="mt-0.5">
+                        Active Loads: {{ trucks|length }}
+                    </div>
+                </div>
+                <i class="fas fa-route text-muted" style="opacity: 0.5; font-size: 1.2rem;"></i>
+            </div>
+            
+            <div class="card-body p-0">
+                <table class="table truck-table mb-0" style="font-size: 0.85rem; vertical-align: middle;">
+                    <thead>
+                        <tr style="background-color: #ffffff; border-bottom: 2px solid #f1f5f9;">
+                            <th style="padding: 10px 16px; font-weight: 700; color: #64748b; font-size: 0.725rem; text-transform: uppercase;">Truck</th>
+                            <th style="padding: 10px 16px; font-weight: 700; color: #64748b; font-size: 0.725rem; text-transform: uppercase;">Driver</th>
+                            <th style="padding: 10px 16px; font-weight: 700; color: #64748b; font-size: 0.725rem; text-transform: uppercase;">Product</th>
+                            <th style="padding: 10px 16px; font-weight: 700; color: #64748b; font-size: 0.725rem; text-transform: uppercase; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {# Sorts the trucks inside each card alphabetically by product name #}
+                        {% for item in trucks | sort(attribute='product') %}
+                        {% set origin = item.trip_type | upper if item.trip_type else 'ENGEN' %}
+                        <tr class="truck-row" style="border-bottom: 1px solid #f1f5f9;
+                            {% if origin == 'SECONDARY' %}
+                                background-color: #f0f7ff;
+                            {% elif origin == 'PUMA' %}
+                                background-color: #fff7ed;
+                            {% else %}
+                                background-color: #ffffff;
+                            {% endif %}">
+                            <td style="padding: 10px 16px;">
+                                <div style="font-weight: 700; color: #0f172a;" class="font-monospace">{{ item.truck if item.truck else '---' }}</div>
+                                <span style="font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em;
+                                    {% if origin == 'SECONDARY' %}
+                                        color: #2563eb;
+                                    {% elif origin == 'PUMA' %}
+                                        color: #ea580c;
+                                    {% else %}
+                                        color: #059669;
+                                    {% endif %}">
+                                    {% if origin == 'SECONDARY' %} Local Load {% elif origin == 'PUMA' %} Puma Load {% else %} Engen Bridging {% endif %}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 16px; color: #475569; font-weight: 500;">{{ item.driver if item.driver else '---' }}</td>
+                            <td style="padding: 10px 16px;">
+                                <span class="product-tag font-weight-bold" style="color: #1e293b; font-weight: 600;">{{ item.product }}</span>
+                            </td>
+                            <td style="padding: 10px 16px; text-align: center;">
+                                <span class="badge rounded-pill text-uppercase px-2 py-1" style="font-size: 0.7rem; font-weight: 700;
+                                    {% if item.status | upper in ['IN TRANSIT', 'EN ROUTE'] %}
+                                        background-color: #2563eb; color: #ffffff;
+                                    {% else %}
+                                        background-color: #64748b; color: #ffffff;
+                                    {% endif %}">
+                                    {{ item.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="card-footer bg-white p-1 border-0" style="border-radius: 0 0 12px 12px;">
+                <div class="progress" style="height: 4px; border-radius: 10px; background: #f1f5f9;">
+                    <div class="progress-bar bg-primary" style="width: 100%; opacity: 0.25;"></div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center w-100 py-5 bg-white rounded-3 shadow-sm" style="border: 2px dashed #cbd5e1;">
+            <i class="fas fa-truck-loading mb-2" style="font-size: 2rem; color: #cbd5e1;"></i>
+            <p class="text-muted small mb-0">No active trucks recorded at destination drops across any manifest network.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+  <div class="row d-flex align-items-stretch">
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow-sm border-0" style="border-radius: 15px; background: #ffffff; height: 480px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #f1f5f9;">
+            
+            <div class="p-4 pb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 style="font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center;">
+                            <span style="color: #3b82f6; margin-right: 8px;">📊</span> TERMINAL THROUGHPUT
+                        </h5>
+                        <div id="dynamicLegend" class="d-flex flex-wrap gap-3 mt-2" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #94a3b8;">
+                        </div>
+                    </div>
+                    <div style="background: #f0fdf4; color: #16a34a; font-size: 0.65rem; font-weight: 800; padding: 5px 12px; border-radius: 50px; border: 1px solid #dcfce7;">
+                        LIVE 2026
+                    </div>
+                </div>
+            </div>
+
+            <div style="flex-grow: 1; width: 100%; position: relative; padding: 10px 15px 15px 15px;">
+                <canvas id="ordersChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="card p-4 shadow-sm border-0" style="border-radius: 15px; height: 480px; background: #ffffff; border: 1px solid #f1f5f9; display: flex; flex-direction: column;">
+            
+            <h5 style="font-weight: 800; color: #1e293b; margin-bottom: 20px; display: flex; align-items: center;">
+                <span style="color: #ef4444; margin-right: 8px;">🚨</span> RECENT INCIDENTS
+            </h5>
+            
+            <div class="table-responsive" style="flex-grow: 1; overflow-y: auto;">
+                <table class="table table-borderless align-middle" style="font-size: 0.85rem; border-collapse: separate; border-spacing: 0 8px;">
+                    <thead class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">
+                        <tr>
+                            <th>Date</th>
+                            <th>Unit</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inc in incidents[:10] %}
+                        <tr style="background: #f8fafc; border-radius: 10px;">
+                            <td style="border-radius: 10px 0 0 10px; color: #64748b;">{{ inc.date }}</td>
+                            <td><span style="font-weight: 700; color: #1e293b;">{{ inc.unit_id }}</span></td>
+                            <td style="border-radius: 0 10px 10px 0;">
+                                <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 700; font-size: 0.7rem; padding: 5px 10px; border-radius: 6px;">
+                                    {{ inc.type }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="pt-3 mt-auto text-center">
+                <a href="#" style="font-size: 0.75rem; font-weight: 700; color: #3b82f6; text-decoration: none;">VIEW ALL INCIDENTS →</a>
+            </div>
+        </div>
+    </div>
+</div>
+  <div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card p-4 shadow-sm border-0 h-100" style="border-radius: 15px; background: white;">
+            <h4 class="mb-4" style="font-size: 1.2rem; font-weight: 700; color: #2c3e50;">💰 Revenue vs Operating Expenses ({{ now.year }})</h4>
+            <div style="position: relative; height: 350px; width: 100%;">
+                <canvas id="financeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card p-4 shadow-sm border-0 h-100" style="border-radius: 15px; background: white;">
+            <h4 class="mb-4" style="font-size: 1.2rem; font-weight: 700; color: #2c3e50;">📈 Annual Trip Distribution ({{ now.year }})</h4>
+            <div style="position: relative; height: 350px; width: 100%;">
+                <canvas id="tripsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Container setup */
+.dest-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem; /* Space between cards */
+    width: 100%;
+}
+
+/* Card stretching logic */
+.destination-card {
+    flex: 1 1 350px; /* This is the magic: Grow, Shrink, and Base width */
+    min-width: 300px; /* Prevents cards from getting too squashed on mobile */
+    max-width: 100%; /* Ensures they don't overflow */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Optional: If you want exactly 2 cards to be 50/50, 
+   but 1 card to be 100% width: */
+@media (min-width: 992px) {
+    .destination-card {
+        flex: 1 1 calc(50% - 1.5rem); 
+    }
+}
+    /* Global Card/KPI styles */
+    .kpi-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; text-align: center; }
+    .kpi-card .label { font-size: 0.8rem; color: #7f8c8d; text-transform: uppercase; font-weight: 600; }
+    .kpi-card .value { font-size: 1.6rem; font-weight: 700; margin-top: 5px; }
+    .summary-card-v2 { background: #fff; border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .border-left-blue-accent { border-left: 6px solid #3b82f6; }
+    .border-left-orange-accent { border-left: 6px solid #f97316; }
+    .stat-row-v2 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .stat-badge { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8rem; }
+    .badge-green { background: #10b981; } .badge-blue { background: #3b82f6; } .badge-red { background: #ef4444; } .badge-orange { background: #f59e0b; }
+    
+    /* Critical Alert Card Styles */
+    .alert-card-v3 { background: #ffffff; border-radius: 20px !important; border: none !important; overflow: hidden; }
+    .card-header-v3 { padding: 15px 20px; background: #fff; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f4f8; }
+    .alert-pulse { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); animation: pulse-red 2s infinite; }
+    @keyframes pulse-red { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+    .badge-count { background: #f1f4f8; color: #64748b; padding: 2px 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; }
+    .alert-scroll-v3 { padding: 10px; }
+    .modern-alert-item { display: flex; align-items: center; padding: 5px; margin-bottom: 8px; border-radius: 12px; background: #f8fafc; transition: 0.3s; }
+    .alert-icon { width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-right: 12px; }
+    .expiring .alert-icon { background: #fee2e2; color: #ef4444; }
+    .fatigue .alert-icon { background: #dcfce7; color: #22c55e; }
+    .alert-tag { font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; text-transform: uppercase; margin-left: 5px; }
+    .expiring .alert-tag { background: #fecaca; color: #dc2626; }
+    .fatigue .alert-tag { background: #bbf7d0; color: #16a34a; }
+    .alert-content { flex-grow: 1; }
+    .alert-title { font-weight: 700; color: #1e293b; font-size: 0.7rem; }
+    .alert-meta { font-size: 0.7rem; color: #94a3b8; }
+    .date-pill { font-size: 0.55rem; background: #fff; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 6px; color: #64748b; }
+    .wa-btn-v3 { width: 30px; height: 30px; background: #22c55e; color: white !important; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; text-decoration: none !important; }
+    .empty-state { padding: 20px; text-align: center; color: #94a3b8; }
+    .check-icon { width: 40px; height: 40px; background: #dcfce7; color: #22c55e; border-radius: 50%; line-height: 40px; font-size: 1.2rem; margin: 0 auto 5px; }
+    
+    /* Scrollbar Styling */
+    .card-body::-webkit-scrollbar, .table-responsive::-webkit-scrollbar { width: 6px; }
+    .card-body::-webkit-scrollbar-thumb, .table-responsive::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- 1. Finance Chart Logic ---
+    const financeCanvas = document.getElementById('financeChart');
+    if (financeCanvas) {
+        try {
+            new Chart(financeCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [
+                        { label: 'Revenue', data: {{ monthly_revenue|tojson|safe if monthly_revenue else [0]*12 }}, backgroundColor: '#10b981' },
+                        { label: 'Expenses', data: {{ monthly_expenses|tojson|safe if monthly_expenses else [0]*12 }}, backgroundColor: '#ef4444' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        } catch (e) { console.error("Finance Chart Error: ", e); }
+    }
+
+    // --- 2. Trips Chart Logic ---
+    const tripsCanvas = document.getElementById('tripsChart');
+    if (tripsCanvas) {
+        try {
+            new Chart(tripsCanvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Trips',
+                        data: {{ monthly_trips_data|tojson|safe if monthly_trips_data else [0]*12 }},
+                        borderColor: '#3b82f6',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        } catch (e) { console.error("Trips Chart Error: ", e); }
+    }
+
+    // --- 3. Orders/Location Chart Logic ---
+    const ordersCanvas = document.getElementById('ordersChart');
+    if (ordersCanvas) {
+        try {
+            const ctx = ordersCanvas.getContext('2d');
+            const dynamicData = {{ chart_data | tojson | safe if chart_data else '{}' }};
+            const months = {{ months | tojson | safe if months else '[]' }};
+
+            const presetStyles = {
+                'HAMILTON': { color: '#22c55e', glow: 'rgba(34, 197, 94, 0.3)' },
+                'KLERKSDORP': { color: '#a855f7', glow: 'rgba(168, 85, 247, 0.3)' },
+                'NELSPRUIT': { color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.3)' },
+                'WALTLOO': { color: '#eab308', glow: 'rgba(234, 179, 8, 0.3)' },
+                'OVK': { color: '#ef4444', glow: 'rgba(239, 68, 68, 0.3)' },
+                'LANGLAAGTE': { color: '#f8fafc', glow: 'rgba(248, 250, 252, 0.3)' }
+            };
+
+            const getStyle = (name) => presetStyles[name] || { color: '#64748b', glow: 'rgba(100, 116, 139, 0.2)' };
+
+            const datasets = Object.keys(dynamicData).map(loc => {
+                const style = getStyle(loc);
+                const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, style.color);
+                gradient.addColorStop(1, 'transparent');
+
+                return {
+                    label: loc,
+                    data: dynamicData[loc],
+                    backgroundColor: gradient,
+                    borderColor: style.color,
+                    borderWidth: 1,
+                    borderRadius: 5,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.8
+                };
+            });
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: { labels: months, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#cbd5e1',
+                            padding: 12,
+                            cornerRadius: 10
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+                            ticks: { color: '#64748b', font: { size: 11 } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } }
+                        }
+                    }
+                }
+            });
+
+            // Populate the Modern Table
+            const tbody = document.getElementById('ordersTableBody');
+            if (tbody) {
+                tbody.innerHTML = ""; 
+                Object.keys(dynamicData).forEach(loc => {
+                    const style = getStyle(loc);
+                    let row = `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02); transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                        <td class="ps-3 py-3">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 10px; height: 10px; border-radius: 50%; background: ${style.color}; box-shadow: 0 0 10px ${style.glow};" class="me-2"></div>
+                                <span style="font-weight: 700; color: #f1f5f9;">${loc}</span>
+                            </div>
+                        </td>
+                        ${dynamicData[loc].map(val => `
+                            <td class="text-center" style="color: ${val > 0 ? '#f8fafc' : '#475569'}; font-weight: ${val > 0 ? '600' : '400'};">
+                                ${val}
+                            </td>
+                        `).join('')}
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+            }
+        } catch (e) { console.error("Orders Chart Error: ", e); }
+    }
+
+    
+});
+</script>
 {% endblock %}

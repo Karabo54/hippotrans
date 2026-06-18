@@ -70,12 +70,30 @@ def update_vehicle_km_from_trip(truck_reg, new_km):
         if v.get("truck_reg") == truck_reg:
             current_km = safe_int(v.get("current_km"))
             if new_km > current_km:
-                v["current_km"] = new_km
-                v["last_km_update"] = datetime.today().strftime("%Y-%m-%d")
-                updated = True
+                if new_km - current_km < 1500:
+                    v["current_km"] = new_km
+                    v["last_km_update"] = datetime.today().strftime("%Y-%m-%d")
+                    updated = True
+                else:
+                    break
             break
 
     if updated:
         save_vehicles(vehicles)
 
     return updated
+    
+def record_service_completed(truck_reg, service_km, interval):
+    """
+    Call this when a truck finishes a service.
+    Example: record_service_completed("BZ 12 GP", 400000, 50000)
+    Sets next service to 450,000km.
+    """
+    vehicles = load_vehicles()
+    for v in vehicles:
+        if v.get("truck_reg") == truck_reg:
+            v["last_service_km"] = str(service_km)
+            v["next_service_km"] = str(service_km + interval)
+            v["current_km"] = str(service_km) # Sync current km to service km
+            break
+    save_vehicles(vehicles)

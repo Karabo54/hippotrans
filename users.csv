@@ -1,0 +1,2 @@
+username,password,role
+admin,scrypt:32768:8:1$M69U49Y6er4vhZNc$d9849ba309f9668cd1d60bfd929c29abdd896de2ad72de7f2f436544801ea0ccc26bd8591db7884e84b644fcbe561747b7c760784475dcdf351dbbcac8a27f71,admin

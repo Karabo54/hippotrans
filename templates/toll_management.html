@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    :root {
+        --vodacom-red: #e60000;
+        --econet-blue: #0056b3;
+    }
+    .toll-card { border-radius: 15px; border: none; overflow: hidden; }
+    .table thead th { 
+        background-color: #f8f9fa; 
+        color: #495057; 
+        text-transform: uppercase; 
+        font-size: 0.75rem; 
+        letter-spacing: 1px;
+        border-top: none;
+    }
+    .status-badge { width: 80px; font-size: 0.7rem; border-radius: 20px; }
+    .payment-badge {
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .mpesa { background-color: #ffe6e6; color: var(--vodacom-red); border: 1px solid #ffcccc; }
+    .ecocash { background-color: #e6f0ff; color: var(--econet-blue); border: 1px solid #ccdfff; }
+    .amount-text { font-family: 'Monaco', monospace; font-weight: 700; color: #2c3e50; }
+    tr.is-paid { background-color: #fcfdfd; opacity: 0.7; }
+    .btn-export { border-radius: 8px; font-weight: 600; transition: all 0.3s; }
+    .btn-export:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2); }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="fw-bold mb-0" style="letter-spacing: -1px;">Toll Funds Dashboard</h2>
+            <p class="text-muted small mb-0">Manage and track driver toll disbursements</p>
+        </div>
+        <button class="btn btn-success btn-export px-4" onclick="exportTollTable()">
+            <i class="fas fa-file-download me-2"></i>Generate Payment Request
+        </button>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-primary text-white toll-card">
+                <div class="card-body">
+                    <h6 class="text-white-50 small">Pending Total</h6>
+                    <h3 class="mb-0 fw-bold">LSL {{ "{:,.2f}".format(total_sum|default(0)) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm toll-card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="tollTable">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Date</th>
+                            <th>Driver Details</th>
+                            <th>Vehicle & Order</th>
+                            <th>Offloading Site</th>
+                            <th>Payment Number</th>
+                            <th>Amount</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trip in trips %}
+                        <tr class="{% if trip.paid %}is-paid{% endif %}">
+                            <td class="ps-4 text-muted small">{{ trip.date }}</td>
+                            <td>
+                                <div class="fw-bold text-dark">{{ trip.driver }}</div>
+                            </td>
+                            <td>
+                                <div class="small fw-bold">{{ trip.reg }}</div>
+                                <div class="text-muted extra-small" style="font-size: 0.7rem;">#{{ trip.order }}</div>
+                            </td>
+                            <td><span class="text-truncate d-inline-block" style="max-width: 150px;">{{ trip.site }}</span></td>
+                            <td>
+                                {% if 'M-Pesa' in trip.payment_no %}
+                                    <span class="payment-badge mpesa"><i class="fas fa-mobile-alt me-2"></i>{{ trip.payment_no.replace(' (M-Pesa)', '') }}</span>
+                                {% elif 'EcoCash' in trip.payment_no %}
+                                    <span class="payment-badge ecocash"><i class="fas fa-wallet me-2"></i>{{ trip.payment_no.replace(' (EcoCash)', '') }}</span>
+                                {% else %}
+                                    <span class="text-danger small"><i class="fas fa-exclamation-triangle"></i> Missing</span>
+                                {% endif %}
+                            </td>
+                            <td class="amount-text text-nowrap">LSL {{ "{:,.0f}".format(trip.amount) }}</td>
+                            <td class="text-center pe-4">
+                                <form action="/mark-toll-paid" method="POST" style="display:inline;">
+                                    <input type="hidden" name="order_no" value="{{ trip.order }}">
+                                    {% if not trip.paid %}
+                                        <button class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm" style="font-size: 0.7rem; font-weight: 700;">
+                                            MARK AS SENT
+                                        </button>
+                                    {% else %}
+                                        <span class="badge bg-success-soft text-success rounded-pill px-3 py-2" style="background-color: #e6f9ed; font-size: 0.65rem;">
+                                            <i class="fas fa-check-circle me-1"></i> DISBURSED
+                                        </span>
+                                    {% endif %}
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function exportTollTable() {
+    // Styling the print view to look professional
+    const originalTitle = document.title;
+    document.title = "Toll_Payment_Request_{{ now }}";
+    window.print();
+    document.title = originalTitle;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Emptiness Certificate - {{ order_no }}</title>
+    <style>
+        @page { size: A4; margin: 0; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; color: #222; margin: 0; padding: 0; background-color: #fff; }
+        
+        .logo-header-container { width: 100%; margin: 0 0 25px 0; padding: 0; }
+        .logo-header-container img { width: 100%; display: block; }
+
+        .document-body-content { padding: 0 40px 40px 40px; }
+
+        .doc-title { text-align: center; margin-bottom: 30px; }
+        .doc-title h2 { display: inline-block; background: #f4f4f4; padding: 8px 45px; border: 1px solid #ddd; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 35px; }
+        .info-table td { padding: 8px 0; vertical-align: bottom; }
+        .label { font-weight: bold; color: #444; width: 150px; text-transform: uppercase; font-size: 11px; }
+        .value { font-size: 14px; border-bottom: 1px solid #ddd; color: #000; padding-left: 10px; }
+
+        .cert-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .cert-table th { background-color: #333; color: white; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
+        .cert-table td { padding: 12px; border-bottom: 1px solid #dee2e6; font-size: 14px; }
+        .cert-table tr:nth-child(even) { background-color: #f9f9f9; }
+        
+        .status-badge { color: #d32f2f; font-weight: bold; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <div class="logo-header-container">
+        <img src="{{ logo_path }}" alt="Logo">
+    </div>
+
+    <div class="document-body-content">
+        <div class="doc-title">
+            <h2>EMPTINESS CERTIFICATE</h2>
+        </div>
+
+        <table class="info-table">
+            <tr>
+                <td class="label">Date:</td><td class="value">{{ date }}</td>
+                <td class="label" style="padding-left: 40px;">Order #:</td><td class="value">{{ order_no }}</td>
+            </tr>
+            <tr>
+                <td class="label">Truck Reg:</td><td class="value">{{ truck }}</td>
+                <td class="label" style="padding-left: 40px;">Driver:</td><td class="value">{{ driver }}</td>
+            </tr>
+            <tr>
+                <td class="label">Trailer Reg:</td><td class="value" colspan="3">{{ trailer }}</td>
+            </tr>
+        </table>
+
+        <table class="cert-table">
+            <thead>
+                <tr>
+                    <th>Compartment Number</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comp in compartments %}
+                <tr>
+                    <td><strong>Compartment {{ comp.number }}</strong></td>
+                    <td class="status-badge">EMPTY</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 60px; border-top: 1px solid #ccc; padding-top: 20px; text-align: center; color: #555;">
+            <p><strong>Inspection Confirmation:</strong> This trailer has been inspected and verified as clean and empty for loading.</p>
+        </div>
+    </div>
+
+</body>
+</html>

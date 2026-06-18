@@ -1,4 +1,236 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Module under construction</h2>
+<div class="container-fluid py-4">
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold mb-3"><i class="fas fa-gas-pump me-2 text-primary"></i>Fleet Trailer Capacity</h2>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm text-white" style="background: linear-gradient(45deg, #0f172a, #334155); border-radius: 15px;">
+                <div class="card-body p-4">
+                    <small class="text-uppercase opacity-75 fw-bold">Combined Fleet Volume</small>
+                    <h2 class="display-6 fw-bold mb-0">{{ "{:,}".format(fleet_stats.total) }} <small class="fs-6">L</small></h2>
+                    <p class="mb-0 mt-2 small"><i class="fas fa-check-circle me-1"></i> {{ fleet_stats.count }} Units Synced</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm border-start border-4 border-warning" style="border-radius: 12px;">
+                <div class="card-body p-4">
+                    <small class="text-uppercase text-muted fw-bold">ADO (Diesel) Payload</small>
+                    <h2 class="fw-bold text-dark mb-0">{{ "{:,}".format(fleet_stats.ado) }} <small class="fs-6 text-muted">L</small></h2>
+                    <div class="progress mt-3" style="height: 6px;">
+                        {% set ado_p = (fleet_stats.ado / fleet_stats.total * 100) if fleet_stats.total > 0 else 0 %}
+                        <div class="progress-bar bg-warning" style="width: {{ ado_p }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm border-start border-4 border-primary" style="border-radius: 12px;">
+                <div class="card-body p-4">
+                    <small class="text-uppercase text-muted fw-bold">ULP (Petrol) Payload</small>
+                    <h2 class="fw-bold text-dark mb-0">{{ "{:,}".format(fleet_stats.ulp) }} <small class="fs-6 text-muted">L</small></h2>
+                    <div class="progress mt-3" style="height: 6px;">
+                        {% set ulp_p = (fleet_stats.ulp / fleet_stats.total * 100) if fleet_stats.total > 0 else 0 %}
+                        <div class="progress-bar bg-primary" style="width: {{ ulp_p }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4 opacity-25">
+
+    <div class="row">
+        {% for trailer in trailers %}
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100 trailer-card {{ 'border-top border-danger border-4' if trailer.total_capacity|int == 0 }}">
+                <div class="card-header bg-white py-3 border-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="h5 mb-0 fw-bold text-dark">{{ trailer.trailer_reg }}</span>
+                        {% if trailer.total_capacity|int > 0 %}
+                        <span class="badge {{ 'bg-warning text-dark' if trailer.primary_product|upper == 'ADO' else 'bg-primary' }}">
+                            {{ trailer.primary_product|upper }}
+                        </span>
+                        {% else %}
+                        <span class="badge bg-danger">SPEC MISSING</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    {% if trailer.total_capacity|int > 0 %}
+                        {% set prod_lower = trailer.primary_product|lower %}
+                        {% if 'ado' in prod_lower or 'd50' in prod_lower %}
+                            {% set suffix = '_ado' %}
+                        {% elif 'ik' in prod_lower %}
+                            {% set suffix = '_ik' %}
+                        {% else %}
+                            {% set suffix = '_ulp' %}
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <small class="text-uppercase text-muted fw-bold">Active Profile Capacity ({{ trailer.primary_product|upper }})</small>
+                            <h3 class="mb-0 fw-bold">
+                                {% set display_total = trailer.get('total' ~ suffix, 0)|int if trailer.get('total' ~ suffix) is defined else trailer.total_capacity|int %}
+                                {{ "{:,}".format(display_total) }} <small class="fs-6 text-muted">L</small>
+                            </h3>
+                        </div>
+
+                        <div class="text-uppercase text-muted fw-bold tracking-wider mb-2" style="font-size: 0.7rem;">
+                            <i class="fas fa-th-large me-1"></i> Registered Compartments
+                        </div>
+                        <div class="row g-2">
+                            {% for i in range(1, 10) %}
+                                {% set val = trailer.get('cpt_' ~ i ~ suffix, 0)|int if trailer.get('cpt_' ~ i ~ suffix) is defined else trailer.get('cpt_' ~ i, 0)|int %}
+                                
+                                {% if val > 0 %}
+                                <div class="col-4">
+                                    <div class="p-2 border rounded bg-light text-center small">
+                                        <span class="d-block text-muted" style="font-size:0.65rem">CPT {{ i }}</span>
+                                        <span class="fw-bold text-dark">{{ "{:,}".format(val) }}L</span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                    {% else %}
+                        <div class="text-center py-4 bg-light rounded">
+                            <i class="fas fa-file-invoice text-muted mb-2" style="font-size: 1.5rem;"></i>
+                            <p class="text-muted small mb-0">No compartment data found for this configuration.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer bg-white border-0 pb-3">
+                    <button class="btn btn-sm btn-outline-primary w-100" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#specModal_{{ loop.index }}">
+                        Update Technical Card
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="specModal_{{ loop.index }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <form class="modal-content border-0 shadow" method="POST" action="{{ url_for('fuel_facs_page') }}" onsubmit="return verifyInstancePayload('{{ loop.index }}');">
+                    <div class="modal-header bg-dark text-white border-0">
+                        <h5 class="modal-title fw-bold">Technical Card: <span>{{ trailer.trailer_reg }}</span></h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Vehicle Registration ID</label>
+                                <input type="text" name="trailer_reg" value="{{ trailer.trailer_reg }}" readonly class="form-control fw-bold border-0 bg-secondary text-white px-3 py-2" style="border-radius: 8px;">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Primary Product Type</label>
+                                <select name="primary_product" id="formProd_{{ loop.index }}" class="form-select border-0 bg-light p-2" style="border-radius: 8px;" onchange="syncCompartmentsForIndex('{{ loop.index }}')">
+                                    <option value="ADO" {% if trailer.primary_product|upper == 'ADO' %}selected{% endif %}>D50</option>
+                                    <option value="ULP" {% if trailer.primary_product|upper == 'ULP' %}selected{% endif %}>ULP (Petrol)</option>
+                                    <option value="IK" {% if trailer.primary_product|upper == 'IK' %}selected{% endif %}>IK (Illuminating Paraffin)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr class="my-3 opacity-25">
+
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-muted text-uppercase mb-0">Compartment Capacities (L) — Edit Values Below</label>
+                        </div>
+                        
+                        <div class="row g-3">
+                            {% set trailer_index = loop.index %}
+                            {% for i in range(1, 10) %}
+                                {# Read values exactly as they are without using the fallback base mixin #}
+                                {% set val_ado = trailer.get('cpt_' ~ i ~ '_ado', '0')|int %}
+                                {% set val_ulp = trailer.get('cpt_' ~ i ~ '_ulp', '0')|int %}
+                                {% set val_ik  = trailer.get('cpt_' ~ i ~ '_ik', '0')|int %}
+                                {% set val_base = trailer.get('cpt_' ~ i, '0')|int %}
+
+                                {# Initial display logic setup on first modal trigger load #}
+                                {% set active_p = trailer.primary_product|upper %}
+                                {% if active_p == 'ULP' %}
+                                    {% set default_load_val = val_ulp if val_ulp > 0 else val_base %}
+                                {% elif active_p == 'IK' %}
+                                    {% set default_load_val = val_ik if val_ik > 0 else val_base %}
+                                {% else %}
+                                    {% set default_load_val = val_ado if val_ado > 0 else val_base %}
+                                {% endif %}
+
+                            <div class="col-md-4 col-6 mt-2">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text border-0 bg-secondary text-white" style="min-width: 50px;">CPT {{i}}</span>
+                                    
+                                    <input type="number" 
+                                           name="cpt_{{i}}" 
+                                           id="cpt_{{i}}_{{ trailer_index }}" 
+                                           class="form-control border-0 bg-light" 
+                                           data-val-ado="{% if val_ado > 0 %}{{ val_ado }}{% endif %}"
+                                           data-val-ulp="{% if val_ulp > 0 %}{{ val_ulp }}{% endif %}"
+                                           data-val-ik="{% if val_ik > 0 %}{{ val_ik }}{% endif %}"
+                                           value="{% if default_load_val > 0 %}{{ default_load_val }}{% endif %}" 
+                                           placeholder="0">
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">Save Configuration</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function syncCompartmentsForIndex(index) {
+    const selectDropdown = document.getElementById('formProd_' + index);
+    if (!selectDropdown) return;
+    
+    const selectedProduct = selectDropdown.value.toLowerCase().trim();
+
+    for (let i = 1; i <= 9; i++) {
+        const inputField = document.getElementById('cpt_' + i + '_' + index);
+        if (!inputField) continue;
+
+        let updatedValue = '';
+        if (selectedProduct === 'ulp') {
+            updatedValue = inputField.getAttribute('data-val-ulp') || '';
+        } else if (selectedProduct === 'ik') {
+            updatedValue = inputField.getAttribute('data-val-ik') || '';
+        } else {
+            updatedValue = inputField.getAttribute('data-val-ado') || '';
+        }
+
+        // Write the pure value directly. If it's missing or unconfigured, it clears down to empty text box.
+        inputField.value = updatedValue;
+    }
+}
+
+function verifyInstancePayload(index) {
+    return true;
+}
+</script>
+
+<style>
+    .trailer-card { border-radius: 12px; transition: transform 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .trailer-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+    .bg-light { background-color: #f1f5f9 !important; }
+    .modal-content { border-radius: 15px; overflow: hidden; }
+    .form-control:focus, .form-select:focus { box-shadow: none; background-color: #e2e8f0 !important; }
+</style>
 {% endblock %}

@@ -1,111 +1,125 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="page">
-  <h2><strong>Service History — {{ truck_reg }}</strong></h2>
-
-  <!-- Flash messages -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <div class="flash-container">
-      {% for category, message in messages %}
-        <div class="flash-message {{ category }}">{{ message }}</div>
-      {% endfor %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 style="font-weight: 700; color: #2c3e50;">🛠 Service History — <span class="text-primary">{{ truck_reg }}</span></h2>
+        <a href="/vehicles" class="btn btn-outline-secondary btn-sm">Back to Fleet</a>
     </div>
-  {% endif %}
-  {% endwith %}
 
-  <!-- ================= SERVICE TABLE ================= -->
-  <div class="table-wrapper">
-    <table class="data-table" border="1" cellpadding="8">
-      <thead>
-        <tr>
-          <th>Service Date</th>
-          <th>KM at Service</th>
-          <th>Target KM</th>
-          <th>KM Difference</th>
-          <th>Service Place</th>
-          <th>Service Type</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in services %}
-        <tr>
-          <td>{{ s.service_date }}</td>
-          <td>{{ s.km_at_service }}</td>
-          <td>{{ s.service_target_km }}</td>
-          <td class="
-              {% if s.km_difference|int < 0 %}text-danger
-              {% elif s.km_difference|int > 0 %}text-warning
-              {% else %}text-success
-              {% endif %}
-          ">
-            {{ s.km_difference }}
-          </td>
-          <td>{{ s.service_place }}</td>
-          <td>{{ s.service_type }}</td>
-          <td>{{ s.notes }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="7" class="text-center">No service records yet.</td>
-        </tr>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container mb-4">
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} shadow-sm">
+                {{ message }}
+            </div>
         {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- ================= ADD SERVICE FORM ================= -->
-  <h3 style="margin-top: 30px;">Add Service Record</h3>
-
-  <form method="POST">
-    <div class="form-grid">
-
-      <div>
-        <label>Service Date</label>
-        <input type="date" name="service_date" required>
-      </div>
-
-      <div>
-        <label>KM at Service</label>
-        <input type="number" name="km_at_service" required>
-      </div>
-
-      <div>
-        <label>Service Target KM</label>
-        <input type="number" name="service_target_km" placeholder="e.g. 40000 or 80000" required>
-      </div>
-
-      <div>
-        <label>Service Place</label>
-        <input type="text" name="service_place" required>
-      </div>
-
-      <div>
-        <label>Service Type</label>
-        <select name="service_type">
-          <option value="Minor">Minor</option>
-          <option value="Major">Major</option>
-          <option value="Breakdown">Breakdown</option>
-          <option value="Adhoc">Adhoc</option>
-        </select>
-      </div>
-
-      <div>
-        <label>Notes</label>
-        <input type="text" name="notes" placeholder="Optional notes">
-      </div>
-
-      <input type="hidden" name="truck_reg" value="{{ truck_reg }}">
-
-      <div style="grid-column: span 2;">
-        <button type="submit" class="btn btn-success">➕ Add Service Record</button>
-      </div>
-
     </div>
-  </form>
+    {% endif %}
+    {% endwith %}
 
+    <div class="card shadow-sm border-0 mb-5" style="border-radius: 15px; overflow: hidden;">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Service Date</th>
+                        <th>KM at Service</th>
+                        <th>Target KM</th>
+                        <th>Status</th>
+                        <th>Service Place</th>
+                        <th>Service Type</th>
+                        <th class="pe-4">Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in services %}
+                    <tr>
+                        <td class="ps-4 fw-bold">{{ s.service_date }}</td>
+                        <td>{{ "{:,}".format(s.service_km|int if s.service_km else 0) }} km</td>
+                        <td>{{ "{:,}".format(s.next_service_km|int if s.next_service_km else 0) }} km</td>
+                        <td>
+                            {% set diff = (s.next_service_km|int - s.service_km|int) %}
+                            <span class="badge rounded-pill {% if diff < 1 %}bg-danger{% else %}bg-light text-dark border{% endif %}">
+                                {{ "{:,}".format(diff) }} km interval
+                            </span>
+                        </td>
+                        <td>{{ s.service_place }}</td>
+                        <td><span class="badge bg-info text-dark">{{ s.service_type }}</span></td>
+                        <td class="pe-4 text-muted small">{{ s.notes }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">No service records found for this vehicle.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 p-4" style="border-radius: 15px; background: #f8f9fa;">
+        <h4 class="mb-4" style="font-weight: 700;"><i class="fas fa-plus-circle me-2"></i>Add New Service Record</h4>
+
+        <form method="POST">
+            <input type="hidden" name="truck_reg" value="{{ truck_reg }}">
+            
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Service Date</label>
+                    <input type="date" name="service_date" class="form-control" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">KM at Service (Odometer)</label>
+                    <input type="number" name="service_km" class="form-control" placeholder="Current KM" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Next Service Target (KM)</label>
+                    <input type="number" name="next_service_km" class="form-control" placeholder="Next Target KM" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Service Place</label>
+                    <input type="text" name="service_place" class="form-control" placeholder="Workshop name" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Service Type</label>
+                    <select name="service_type" class="form-select">
+                        <option value="Minor">Minor Service</option>
+                        <option value="Major">Major Service</option>
+                        <option value="Breakdown">Breakdown Repair</option>
+                        <option value="Adhoc">Adhoc Maintenance</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Notes</label>
+                    <input type="text" name="notes" class="form-control" placeholder="e.g. Changed air filters">
+                </div>
+
+                <div class="col-12 mt-4 text-end">
+                    <button type="submit" class="btn btn-primary px-5 py-2 fw-bold" style="border-radius: 10px;">
+                        💾 Save Service & Update Odometer
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
+
+<style>
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+    }
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
+</style>
 
 {% endblock %}

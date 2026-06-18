@@ -1,5 +1,6 @@
 import csv
 from datetime import date, datetime
+from utils.load_trips import load_trips
 
 DATA_PATH = "DATA"
 

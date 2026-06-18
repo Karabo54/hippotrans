@@ -1,5 +1,44 @@
+<style>
+    /* PROFESSIONAL TRANSITIONS & STYLING */
+    .sidebar { 
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
+
+    /* Sub-menu Slide Animation */
+    .sub-menu { 
+        max-height: 0; 
+        overflow: hidden; 
+        transition: max-height 0.35s ease-out; 
+        background: rgba(0, 0, 0, 0.05); /* Slight contrast */
+        list-style: none;
+        padding: 0;
+    }
+    .nav-link:hover .fa-circle-notch {
+    animation: fa-spin 2s infinite linear;
+    }
+    /* Class added by JS to expand the menu */
+    .has-sub.open > .sub-menu { 
+        max-height: 800px; /* Large enough for all links */
+    }
+
+    /* Active Highlight: The specific page you are on */
+    .sidebar ul li.active > a {
+        background: #2563eb !important; /* Professional Blue */
+        color: white !important;
+        font-weight: 600;
+    }
+
+    /* Parent Highlight: When one of its children is active */
+    .sidebar ul li.active-parent > a {
+        background: rgba(37, 99, 235, 0.1);
+        border-left: 4px solid #2563eb;
+    }
+
+    /* Professional rotation for arrows (optional icons) */
+    .has-sub .menu-link { position: relative; }
+</style>
+
 <div class="layout">
-  <!-- SIDEBAR -->
   <div class="sidebar expanded" id="sidebar">
     <div class="sidebar-header">
       <button id="toggleSidebar" class="toggle-btn">☰</button>
@@ -14,13 +53,9 @@
       <li class="has-sub" data-menu="drivers">
         <a href="#" class="menu-link"><i class="fa fa-id-card"></i><span>Drivers</span></a>
         <ul class="sub-menu">
-          <li><a href="/drivers/drivers"><i class="fa fa-user"></i><span>Drivers</span></a></li>
-          <li><a href="/drivers/contacts"><i class="fa fa-phone"></i><span>Driver Contact</span></a></li>
-          <li><a href="/drivers/violations"><i class="fa fa-exclamation-triangle"></i><span>Violations</span></a></li>
-          <li><a href="/drivers/training"><i class="fa fa-graduation-cap"></i><span>Training Matrix</span></a></li>
-          <li><a href="/drivers/docs"><i class="fa fa-file-alt"></i><span>Docs Expiring</span></a></li>
+          <li><a href="/bto-manager"><i class="fa fa-user"></i><span>Drivers</span></a></li>
           <li><a href="/drivers/loads"><i class="fa fa-route"></i><span>Driver Loads</span></a></li>
-          <li><a href="/drivers/allowance"><i class="fa fa-money-bill-wave"></i><span>Food Allowance</span></a></li>
+          <li><a href="/driver/allowance"><i class="fa fa-money-bill-wave"></i><span>Food Allowance</span></a></li>
         </ul>
       </li>
 
@@ -31,25 +66,20 @@
           <li><a href="/breakdowns"><i class="fa fa-tools"></i><span>Breakdowns</span></a></li>
           <li><a href="/vehicles/fuel-facs"><i class="fa fa-gas-pump"></i><span>Fuel Facs</span></a></li>
           <li><a href="/vehicles/list"><i class="fa fa-list"></i><span>Fleet List</span></a></li>
-          <li><a href="/vehicles/compliance"><i class="fa fa-clipboard-check"></i><span>Compliance</span></a></li>
-          <li><a href="/vehicles/compliance/expiries"><i class="fa fa-clipboard-check"></i><span>Compliance Expiries</span></a></li>
-
-          <li class="has-sub" data-menu="maintenance">
-            <a href="#" class="menu-link"><i class="fa fa-wrench"></i><span>Vehicle Maintenance</span></a>
-            <ul class="sub-menu">
-              <li><a href="/vehicles/maintenance/service"><i class="fa fa-cogs"></i><span>Service</span></a></li>
-              <li><a href="/vehicles/maintenance/inspection"><i class="fa fa-search"></i><span>Inspection Schedules</span></a></li>
-              <li><a href="/vehicles/maintenance/tyres"><i class="fa fa-circle-notch"></i><span>Tyre Management</span></a></li>
-            </ul>
-          </li>
+          <li><a href="/compliance-module"><i class="fa fa-clipboard-check"></i><span>Compliance</span></a></li>
+          <li><a href="/toll-management"><i class="fa fa-clipboard-check"></i><span>Toll Gate Funds</span></a></li>
         </ul>
       </li>
-
+      <li><a href="/workshop"><i class="fas fa-hammer"></i><span>Workshop</span></a></li>
+      <li><a href="/tyres"><i class="fas fa-circle-notch"></i><span>Tyre Managemnt</span></a></li>
       <li class="has-sub" data-menu="trips">
         <a href="#" class="menu-link"><i class="fa fa-road"></i><span>Trips</span></a>
         <ul class="sub-menu">
-          <li><a href="/trips"><i class="fa fa-map-marked-alt"></i><span>All Trips</span></a></li>
-          <li><a href="/trips/upload"><i class="fa fa-upload"></i><span>Upload Trips</span></a></li>
+            <li><a href="/trips"><i class="fa fa-map-marked-alt"></i><span>Engen Trips</span></a></li>
+            <li><a href="/puma-ops"><i class="fa fa-map-marked-alt"></i><span>Puma Trips</span></a></li>
+            <li><a href="/trips/secondary_trips"><i class="fa fa-gas-pump"></i><span>Secondary Trips</span></a></li>
+            <li><a href="/puma-orders"><i class="fa fa-map-marked-alt"></i><span>Puma Open Orders</span></a></li>
+            <li><a href="/trips/upload"><i class="fa fa-upload"></i><span>Upload Trips</span></a></li>
         </ul>
       </li>
 
@@ -65,32 +95,58 @@
 
       <li><a href="/documents"><i class="fa fa-folder-open"></i><span>Important Documents</span></a></li>
       <li><a href="/incidents"><i class="fa fa-exclamation-circle"></i><span>Incidents</span></a></li>
+      <li><a href="/finance"><i class="fa fa-file-invoice-dollar"></i><span>Invoices</span></a></li>
     </ul>
   </div>
 
-  <!-- MAIN CONTENT -->
   <div class="main-content" id="mainContent">
-    <!-- Your page content here -->
     {% block content %}{% endblock %}
   </div>
 </div>
-<script>
-  console.log("Sidebar JS loaded");
 
+<script>
   document.addEventListener("DOMContentLoaded", function () {
     const sidebar = document.getElementById("sidebar");
     const toggleBtn = document.getElementById("toggleSidebar");
+    const currentPath = window.location.pathname;
 
+    // 1. COLLAPSE/EXPAND TOGGLE
     toggleBtn.addEventListener("click", function () {
       sidebar.classList.toggle("collapsed");
     });
 
+    // 2. SUB-MENU CLICK LOGIC
     document.querySelectorAll(".has-sub > .menu-link").forEach(function (menu) {
       menu.addEventListener("click", function (e) {
         e.preventDefault();
-        this.parentElement.classList.toggle("open");
+        const parent = this.parentElement;
+        
+        // Close other open sub-menus (Professional behavior)
+        document.querySelectorAll(".has-sub.open").forEach(openMenu => {
+          if (openMenu !== parent) openMenu.classList.remove("open");
+        });
+
+        parent.classList.toggle("open");
       });
+    });
+
+    // 3. AUTO-EXPAND & ACTIVE STATE DETECTION
+    // Runs on page load to see where we are
+    document.querySelectorAll(".sidebar a").forEach(function (link) {
+      const linkPath = link.getAttribute("href");
+
+      // Check if the current URL matches the link
+      if (linkPath && linkPath !== "#" && currentPath === linkPath) {
+        // Highlight the actual link
+        link.parentElement.classList.add("active");
+
+        // If inside a sub-menu, expand the parent and highlight it
+        const parentSub = link.closest(".has-sub");
+        if (parentSub) {
+          parentSub.classList.add("open");
+          parentSub.classList.add("active-parent");
+        }
+      }
     });
   });
 </script>
-

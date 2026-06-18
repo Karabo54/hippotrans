@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <a href="/bto-manager" class="btn btn-outline-secondary mb-4">← Back to Registry</a>
+    
+    <div class="card shadow-lg mx-auto" style="max-width: 700px; border-radius: 15px; overflow: hidden;">
+        <div class="card-header text-white text-center py-4" style="background: linear-gradient(45deg, #1a2a6c, #b21f1f);">
+            <div class="mb-2">
+                <div class="bg-light d-inline-block rounded-circle text-dark shadow" style="width: 100px; height: 100px; line-height: 100px; font-size: 40px;">
+                    {{ d['NAME/SURNAME'][0] }}
+                </div>
+            </div>
+            <h2 class="mb-0">{{ d['NAME/SURNAME'] }}</h2>
+            <p class="mb-0 opacity-75">Professional Driver | ID: {{ d['bto_id'] }}</p>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <h5 class="text-primary border-bottom pb-2">Identification</h5>
+                    <p class="mb-1 text-muted">ID Number</p>
+                    <p class="font-weight-bold">{{ d['ID NO'] }}</p>
+                    
+                    <p class="mb-1 text-muted">Date of Birth</p>
+                    <p class="font-weight-bold">{{ d['DOB'] }}</p>
+
+                    <p class="mb-1 text-muted">Age</p>
+                    <p class="font-weight-bold">{{ d['AGE'] if d['AGE'] else 'N/A' }}</p>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <h5 class="text-primary border-bottom pb-2">Medical & Safety</h5>
+                    <p class="mb-1 text-muted">Medical Condition</p>
+                    <p class="font-weight-bold text-success">{{ d['Medical Condition'] }}</p>
+                    
+                    <p class="mb-1 text-muted">Medical Expiry</p>
+                    <p class="font-weight-bold">{{ d['Medical Exp Date'] }}</p>
+
+                    <p class="mb-1 text-muted">Hazchem Status</p>
+                    <span class="badge badge-warning p-2">Dangerous Goods Certified</span>
+                </div>
+            </div>
+
+            <div class="mt-3 text-center bg-light p-3 rounded">
+                <div class="row text-center">
+                    <div class="col">
+                        <small class="text-muted d-block">License Expiry</small>
+                        <strong>{{ d['Drivers License Exp Date'] }}</strong>
+                    </div>
+                    <div class="col border-left">
+                        <small class="text-muted d-block">PrDP Expiry</small>
+                        <strong>{{ d['PDrP Exp Date'] }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-footer text-center bg-white border-top-0 pb-4">
+            <button class="btn btn-primary px-4" onclick="window.print()">Print Driver Card</button>
+            <button class="btn btn-outline-dark px-4 ml-2">Edit Details</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

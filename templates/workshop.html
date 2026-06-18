@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-navy mb-0">Workshop & Job Cards</h2>
+            <p class="text-muted small">Manage fleet repairs and maintenance costs</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-uppercase small fw-bold">
+                    <tr>
+                        <th class="ps-3">Job Card #</th>
+                        <th>Truck / Brand</th>
+                        <th>Location / Kms</th> <th>Driver / Mechanic</th>
+                        <th>Job Request</th>
+                        <th>Status</th>
+                        <th class="text-end pe-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for j in jobs %}
+                    <tr>
+                        <td class="ps-3">
+                            <span class="fw-bold text-primary">{{ j['JOBCARD NO.'] }}</span><br>
+                            <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>{{ j['DATE OPENED'] }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ j['TRUCK REG'] }}</div>
+                            <small class="text-muted">{{ j['TRUCK BRAND'] }}</small>
+                        </td>
+                        <td>
+                            <div class="small"><strong>Loc:</strong> {{ j.get('LOCATION', 'N/A') }}</div>
+                            <div class="small text-muted"><strong>Kms:</strong> {{ j.get('ODO READING', 'N/A') }}</div>
+                        </td>
+                        <td>
+                            <div class="small"><strong>D:</strong> {{ j["DRIVER'S NAME"] }}</div>
+                            <div class="small text-muted"><strong>M:</strong> {{ j["MECHENIC'S NAME"] or 'Unassigned' }}</div>
+                        </td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 150px;" title="{{ j['JOB REQUEST'] }}">
+                                {{ j['JOB REQUEST'] }}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill 
+                                {% if j.status == 'REPORTED' %}bg-secondary{% elif j.status == 'SEEN' %}bg-info{% elif j.status == 'IN REPAIR' %}bg-warning{% else %}bg-success{% endif %}">
+                                {{ j.status }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-3">
+                            {% if j.status == 'REPORTED' %}
+                                <button class="btn btn-white btn-sm" data-bs-toggle="modal" data-bs-target="#viewModal{{ j.breakdown_id }}">
+                                    <i class="fas fa-eye text-primary"></i>
+                                </button>
+                            {% elif j.status == 'SEEN' %}
+                                <a href="/workshop/to_repair/{{ j.breakdown_id }}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-tools"></i>
+                                </a>
+                            {% elif j.status == 'IN REPAIR' %}
+                                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#closeModal{{ j.breakdown_id }}">
+                                    <i class="fas fa-check-double"></i>
+                                </button>
+                            {% elif j.status == 'REPAIRED' %}
+                                <a href="/breakdowns/pdf/{{ j.breakdown_id }}" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <div class="modal fade" id="viewModal{{ j.breakdown_id }}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title fw-bold">Breakdown Details: {{ j['TRUCK REG'] }}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Date Opened:</strong> {{ j['DATE OPENED'] }}</p>
+                                    <p><strong>Time Reported:</strong> {{ j.get('reported_time', 'N/A') }}</p>
+                                    <p><strong>Truck Reg:</strong> {{ j['TRUCK REG'] }}</p>
+                                    <p><strong>Driver:</strong> {{ j["DRIVER'S NAME"] }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Odo Reading:</strong> {{ j['ODO READING'] }}</p>
+                                    <p><strong>Location:</strong> {{ j['LOCATION'] }}</p>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-12">
+                                    <p><strong>Reported Issue:</strong></p>
+                                    <div class="p-3 bg-light border rounded">
+                                        {{ j['JOB REQUEST'] }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <a href="/workshop/seen/{{ j.breakdown_id }}" class="btn btn-primary px-4">Mark as Seen</a>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                  <div class="modal fade" id="closeModal{{ j.breakdown_id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg">
+                            <div class="modal-header bg-navy text-white">
+                                <h5 class="modal-title fw-bold">Finalize Job: {{ j['JOBCARD NO.'] }}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="/breakdowns/close/{{ j.breakdown_id }}" method="POST">
+                                <div class="modal-body p-4">
+                                    <div class="row g-3">
+                                        <div class="col-md-3"><label class="form-label small fw-bold">JOBCARD NO.</label><input type="text" class="form-control bg-light" value="{{ j['JOBCARD NO.'] }}" readonly></div>
+                                        <div class="col-md-3"><label class="form-label small fw-bold">TRUCK REG</label><input type="text" class="form-control bg-light" value="{{ j['TRUCK REG'] }}" readonly></div>
+                                        <div class="col-md-3"><label class="form-label small fw-bold">DATE OPENED</label><input type="text" class="form-control bg-light" value="{{ j['DATE OPENED'] }}" readonly></div>
+                                        <div class="col-md-3"><label class="form-label small fw-bold">DATE CLOSED</label><input type="date" name="DATE CLOSED" class="form-control" required></div>
+                                        
+                                        <hr>
+                                        
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">JOB REQUEST (Original Problem)</label>
+                                            <textarea class="form-control bg-light" rows="2" readonly>{{ j['JOB REQUEST'] }}</textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-success">JOB DONE (Work Performed)</label>
+                                            <textarea name="WORK DONE" class="form-control border-success" rows="2" placeholder="Describe the repairs actually carried out..." required></textarea>
+                                        </div>
+                                        
+                                        <div class="col-md-3"><label class="form-label small fw-bold">MECHANIC'S NAME</label><input type="text" name="MECHENIC'S NAME" class="form-control" required></div>
+                                        <div class="col-md-3"><label class="form-label small fw-bold">PART NAME</label><input type="text" name="PART NAME" class="form-control"></div>
+                                        <div class="col-md-3"><label class="form-label small fw-bold">PART NO.</label><input type="text" name="PART NUMBER/CODE" class="form-control"></div>
+                                        <div class="col-md-3"><label class="form-label small fw-bold">SIDE</label><select name="SIDE" class="form-select"><option>N/A</option><option>Left</option><option>Right</option><option>Front</option><option>Rear</option></select></div>
+                                        
+                                        <div class="col-md-3"><label class="form-label small fw-bold">ODO READING</label><input type="number" name="ODO READING" class="form-control" value="{{ j['ODO READING'] }}"></div>
+                                        <div class="col-md-3"><label class="form-label small fw-bold">COST/PART (R)</label><input type="number" step="0.01" name="COST/PART" class="form-control"></div>
+                                        <div class="col-md-2"><label class="form-label small fw-bold">QTY</label><input type="number" name="QUANTITY" class="form-control" value="1"></div>
+                                        <div class="col-md-2"><label class="form-label small fw-bold">CONSUMABLES (R)</label><input type="number" step="0.01" name="CONSUMEABLES" class="form-control"></div>
+                                        <div class="col-md-2"><label class="form-label small fw-bold">LABOUR (R)</label><input type="number" step="0.01" name="LABOUR" class="form-control"></div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-success px-4">Complete & Mark Repaired</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+ <div class="container-fluid py-4">
+    <div class="inventory-container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-navy mb-0">Workshop Inventory</h2>
+                <p class="text-muted small">Click a category to expand/collapse stock</p>
+            </div>
+            <div class="col-md-6">
+                <div class="position-relative">
+                    <i class="fas fa-search position-absolute text-muted" style="left: 15px; top: 12px;"></i>
+                    <input type="text" id="inventorySearch" class="form-control search-input" placeholder="         Search Part, Brand or Location...">
+                </div>
+            </div>
+            <button class="btn btn-capture shadow-sm" data-bs-toggle="modal" data-bs-target="#addStockModal">
+                <i class="fas fa-boxes me-2"></i> Capture New Stock
+            </button>
+        </div>
+
+        <div class="table-responsive rounded-3 overflow-hidden shadow-sm">
+            <table class="table table-hover align-middle mb-0 bg-white">
+                <thead>
+                    <tr class="text-center">
+                        <th>Part Details</th>
+                        <th>Location</th>
+                        <th>Opening</th>
+                        <th>Used</th>
+                        <th>Balance</th>
+                        <th>Brand</th>
+                        <th>Pricing (Excl/Incl)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set categories = inventory | map(attribute='category') | unique | list %}
+                    {% for cat in categories %}
+                        {% set cat_id = cat | replace(' ', '_') | replace('/', '_') %}
+                        
+                        <tr class="category-divider cursor-pointer" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target=".cat-group-{{ cat_id }}" 
+                            style="cursor: pointer; background-color: #f8f9fa;">
+                            <td colspan="7" class="text-center py-3 fw-bold text-navy">
+                                <i class="fas fa-chevron-down me-2 small"></i> {{ cat }} 
+                                <span class="badge bg-navy ms-2" style="font-size: 0.6rem;">{{ (inventory | selectattr('category', 'equalto', cat) | list | length) }} items</span>
+                            </td>
+                        </tr>
+                        
+                        {% for item in inventory if item.category == cat %}
+                        <tr class="inventory-row text-center collapse cat-group-{{ cat_id }}">
+                            <td class="text-start ps-4">
+                                <div class="fw-bold text-navy">{{ item.part_name }}</div>
+                                <div class="text-muted extra-small" style="font-size: 0.7rem;">#{{ item.part_number }}</div>
+                            </td>
+                            <td>
+                                <span class="text-muted small">{{ item.store }}</span><br>
+                                <span class="badge bg-light text-navy border">Shelf: {{ item.shelf }} ({{ item.side }})</span>
+                            </td>
+                            <td class="fw-bold text-muted">{{ item.opening_stock }}</td>
+                            <td class="text-danger fw-bold">-{{ item.quantity_used }}</td>
+                            <td>
+                                <span class="stock-badge {{ 'bg-success-soft text-success' if item.balance|int > 5 else 'bg-warning-soft text-warning' }}">
+                                    {{ item.balance }} in stock
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill bg-navy text-white px-3">{{ item.truck_brand }}</span>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-navy">R {{ "{:,.2f}".format(item.cost_part|float) }}</div>
+                                <div class="text-muted small" style="font-size: 0.7rem;">Incl: R {{ "{:,.2f}".format(item.inclusive|float) }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form action="/workshop/add-inventory" method="POST" class="modal-content border-0 shadow-lg">
+    <div class="modal-header bg-navy text-white">
+        <h5 class="modal-title fw-bold">Capture New Workshop Stock</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body p-4 bg-light">
+        <div class="row g-3">
+            <div class="col-12 border-bottom pb-2 mb-2">
+                <span class="text-navy fw-bold small"><i class="fas fa-tag me-2"></i>Part Identification</span>
+            </div>
+            
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-navy small">Category</label>
+                <select name="category" class="form-select border-0 shadow-sm" required>
+                    <option value="BODY PARTS">BODY PARTS</option>
+                    <option value="ENGINE COMPONENTS">ENGINE COMPONENTS</option>
+                    <option value="FILTERS">FILTERS</option>
+                    <option value="BRAKING SYSTEM">BRAKING SYSTEM</option>
+                    <option value="ELECTRICAL">ELECTRICAL</option>
+                    <option value="TYRES & WHEELS">TYRES & WHEELS</option>
+                    <option value="FLUIDS & LUBRICANTS">FLUIDS & LUBRICANTS</option>
+                </select>
+            </div>
+            
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-navy small">Part Name</label>
+                <input type="text" name="part_name" class="form-control border-0 shadow-sm" placeholder="e.g. Front Bumper" required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-navy small">Part Number</label>
+                <input type="text" name="part_number" class="form-control border-0 shadow-sm" placeholder="OEM or SKU Number" required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-navy small">Truck Brand Compatibility</label>
+                <input type="text" name="truck_brand" class="form-control border-0 shadow-sm" placeholder="e.g. SCANIA, VOLVO, MAN">
+            </div>
+
+            <div class="col-12 border-bottom pb-2 mb-2 mt-4">
+                <span class="text-navy fw-bold small"><i class="fas fa-coins me-2"></i>Stock & Pricing</span>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-navy small">Opening Stock Qty</label>
+                <input type="number" name="opening_stock" class="form-control border-0 shadow-sm" value="0" min="0" required>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-navy small">Cost Per Part (Excl. VAT)</label>
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text border-0 bg-white">R</span>
+                    <input type="number" step="0.01" name="cost_part" class="form-control border-0" placeholder="0.00" required>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-navy small">Inclusive Price (Auto-calc)</label>
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text border-0 bg-white">R</span>
+                    <input type="text" class="form-control border-0 bg-white" placeholder="Will calculate..." readonly>
+                </div>
+                <small class="text-muted" style="font-size: 0.65rem;">*15% VAT added automatically on save</small>
+            </div>
+
+            <div class="col-12 border-bottom pb-2 mb-2 mt-4">
+                <span class="text-navy fw-bold small"><i class="fas fa-map-marker-alt me-2"></i>Store Location</span>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-navy small">Store Name</label>
+                <input type="text" name="store" class="form-control border-0 shadow-sm" placeholder="e.g. Main Warehouse" required>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-navy small">Shelf Number</label>
+                <input type="text" name="shelf" class="form-control border-0 shadow-sm" placeholder="e.g. A1-B2" required>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-navy small">Side</label>
+                <select name="side" class="form-select border-0 shadow-sm">
+                    <option value="LEFT">LEFT SIDE</option>
+                    <option value="RIGHT">RIGHT SIDE</option>
+                    <option value="CENTER">CENTER AISLE</option>
+                    <option value="BULK">BULK AREA</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer border-0 bg-light p-3">
+        <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none" data-bs-dismiss="modal">Discard</button>
+        <button type="submit" class="btn btn-navy px-5 rounded-pill text-white shadow">
+            <i class="fas fa-save me-2"></i>Commit to Inventory
+        </button>
+    </div>
+</form>
+    </div>
+</div>
+</div>
+<style>
+    /* Custom Theme Colors */
+    .bg-navy { background-color: #0e8bf1 !important; }
+    .text-navy { color: #0d7ef0 !important; }
+    .bg-success-soft { background-color: #e8f5e9; }
+    .bg-warning-soft { background-color: #fffde7; }
+    
+    /* Modern Card & Table Styling */
+    .inventory-container {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+    
+    .table thead th {
+        background-color: #0f7eed;
+        color: white;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        border: none;
+        padding: 15px;
+    }
+
+    .category-divider {
+        background-color: #FF0000 !important; /* From your image */
+        color: #001f3f !important;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        font-size: 1rem;
+        border-top: 3px solid #001f3f !important;
+        border-bottom: 3px solid #001f3f !important;
+    }
+
+    .inventory-row {
+        transition: all 0.2s;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .inventory-row:hover {
+        background-color: #f1f4f9;
+        transform: scale(1.002);
+    }
+
+    /* Status Badges */
+    .stock-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .btn-capture {
+        background: linear-gradient(135deg, #001f3f 0%, #003366 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        transition: transform 0.2s;
+    }
+
+    .btn-capture:hover {
+        transform: translateY(-2px);
+        color: #ffc107;
+    }
+</style>
+<script>
+document.getElementById('inventorySearch').addEventListener('input', function() {
+    const filter = this.value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.inventory-row');
+    const headers = document.querySelectorAll('.category-divider');
+
+    if (filter === "") {
+        // 1. RESET: If search is empty, hide all rows and show all headers
+        rows.forEach(row => {
+            row.classList.remove('show');
+            row.style.display = 'none'; // Keep them hidden until clicked
+        });
+        headers.forEach(h => h.style.display = '');
+    } else {
+        // 2. SEARCHING: Hide headers and check every row
+        headers.forEach(h => h.style.display = 'none');
+        
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            if (text.includes(filter)) {
+                // FORCE SHOW: bypasses the collapse state
+                row.style.setProperty('display', 'table-row', 'important');
+                row.classList.add('show');
+            } else {
+                row.style.display = 'none';
+                row.classList.remove('show');
+            }
+        });
+    }
+});
+
+// Fix for manual clicking: Ensure rows use table-row instead of block
+document.querySelectorAll('.category-divider').forEach(header => {
+    header.addEventListener('click', function() {
+        const targetClass = this.getAttribute('data-bs-target').substring(1);
+        const targetRows = document.querySelectorAll('.' + targetClass);
+        
+        // Short delay to let Bootstrap finish its animation
+        setTimeout(() => {
+            targetRows.forEach(row => {
+                if (row.classList.contains('show')) {
+                    row.style.display = 'table-row';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }, 350);
+    });
+});
+</script>
+{% endblock %}

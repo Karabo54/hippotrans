@@ -1,308 +1,456 @@
 {% extends "base.html" %}
 {% block content %}
-
-<div>
-
-  <h2>🕒 Working Hours & Fatigue Management</h2>
-
-  <!-- ================= ENTRY FORM ================= -->
-  <div class="form-card">
-    <h3>Log Driver Working Hours</h3>
-    <form method="POST">
-      <div class="form-grid">
-        <input type="date" name="date" required>
-        <input type="text" name="driver_name" placeholder="Driver Name" required>
-        <select name="off_day">
-          <option value="no">Working Day</option>
-          <option value="yes">Off Day</option>
-        </select>
-        <input type="time" name="start_time">
-        <input type="time" name="end_time">
-        <textarea name="after_hours_reason" placeholder="After hours reason (if any)"></textarea>
-        <button type="submit">➕ Save Log</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- ================= YEAR TABS ================= -->
-  <div class="tabs" id="yearTabs">
-  {% for year in structure.keys() %}
-    <div class="tab {% if year == default_year %}active{% endif %}" data-year="{{ year }}">{{ year }}</div>
-  {% endfor %}
-  </div>
-
-  <!-- ================= MONTH TABS ================= -->
-  {% for year, months in structure.items() %}
-  <div class="sub-tabs year-block" id="year-{{ year }}" {% if year != default_year %}style="display:none"{% endif %}>
-    {% for month in months.keys() %}
-      <div class="sub-tab {% if month == default_month %}active{% endif %}" data-month="{{ month }}" data-year="{{ year }}">{{ month }}</div>
-    {% endfor %}
-  </div>
-  {% endfor %}
-
-  <!-- ================= DRIVER TABS + DATA ================= -->
-  {% for year, months in structure.items() %}
-    {% for month, drivers in months.items() %}
-      <div class="month-block" id="month-{{ year }}-{{ month }}" 
-           {% if not (year == current_year and month == current_month) %}style="display:none"{% endif %}>
-
-        <div class="tabs driver-tabs">
-          {% for driver in drivers.keys() %}
-            <div class="tab {% if loop.first %}active{% endif %}" 
-                 data-driver="{{ driver }}" 
-                 data-month="{{ month }}" 
-                 data-year="{{ year }}">{{ driver }}</div>
-          {% endfor %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-navy mb-0">🕒 Working Hours & Fatigue Management</h2>
+            <p class="text-muted small">Monitor driver shifts, rest periods, and client KPIs</p>
         </div>
-
-        {% for driver, days in drivers.items() %}
-        <div class="driver-block"
-             data-driver="{{ driver }}"
-             data-month="{{ month }}"
-             data-year="{{ year }}"
-             {% if not loop.first %}style="display:none"{% endif %}>
-
-          <!-- ================= SUMMARY CARDS ================= -->
-          {% set key = (driver, month) %}
-          <div class="card-grid">
-            <div class="card">
-              <h4>Total Hours</h4>
-              <p><strong>{{ monthly_summary[key].total_hours if key in monthly_summary else 0 }}</strong></p>
-            </div>
-            <div class="card">
-              <h4>Days Worked</h4>
-              <p><strong>{{ monthly_summary[key].days_worked if key in monthly_summary else 0 }}</strong></p>
-            </div>
-            <div class="card">
-              <h4>Violations</h4>
-              <p><strong>{{ monthly_summary[key].violations if key in monthly_summary else 0 }}</strong></p>
-            </div>
-            <div class="card">
-              <h4>After Hours</h4>
-              <p><strong>{{ monthly_summary[key].after_hours if key in monthly_summary else 0 }}</strong></p>
-            </div>
-          </div>
-          
-          <!-- ================= DAILY LOG TABLE ================= -->
-          <div class="table-card">
-            <h4>📋 {{ driver }} – Daily Log ({{ month }})</h4>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Hours</th>
-                  <th>Off Day</th>
-                  <th>After Hours Reason</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in days|sort(attribute="date") %}
-                <tr>
-                    <td>{{ r.date }}</td>
-                    <td>{{ r.start_time }}</td>
-                    <td>{{ r.end_time }}</td>
-                    <td>{{ r.hours_worked }}</td>
-                    <td>{{ r.off_day }}</td>
-                    <td>{{ r.after_hours_reason }}</td>
-                    <td>
-                      {% if r.violation %}
-                        <span class="badge badge-danger">Violation</span>
-                      {% elif r.after_hours %}
-                        <span class="badge badge-warning">After Hours</span>
-                      {% elif r.off_day == "yes" %}
-                        <span class="badge badge-info">Off Day</span>
-                      {% else %}
-                        <span class="badge badge-success">OK</span>
-                      {% endif %}
-                    </td>
-                    <td>
-                      <button class="btn-small btn-edit" onclick='openFatigueModal({{ r | tojson }})'>✏️ Edit</button>
-                      <form action="{{ url_for('delete_fatigue_entry', index=r.index) }}" method="POST" style="display:inline;">
-                        <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
-                      </form>
-
-                      
-                    </td>
-                  </tr>
-
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          <h4>📅 Weekly Summary ({{ month }})</h4>
-            <div class="card-grid">
-              {% set wk_key = (driver, month) %}
-              {% if weekly_summary.get(wk_key) %}
-                {% for week, data in weekly_summary[wk_key].items() %}
-                  <div class="card">
-                    <h5>{{ week }}</h5>
-                    <p>🕒 Hours: <strong>{{ data.total_hours }}</strong></p>
-                    <p>📅 Days: <strong>{{ data.days_worked }}</strong></p>
-                    <p>⚠ Violations: <strong>{{ data.violations }}</strong></p>
-                  </div>
-                {% endfor %}
-              {% else %}
-                <p>No weekly data available.</p>
-              {% endif %}
-            </div>
-
-          <h4>🛌 Planned OFF Rotation</h4>
-          <div class="card-grid">
-            {% for r in rotation %}
-              {% if r.driver == driver %}
-                <div class="card">
-                  <h5>{{ r.driver }}</h5>
-                  <p>Off Start: <strong>{{ r.off_start }}</strong></p>
-                  <p>Off End: <strong>{{ r.off_end }}</strong></p>
-                  <p>Days: <strong>{{ r.days }}</strong></p>
-                </div>
-              {% endif %}
-            {% endfor %}
-          </div>
-
-
-        </div>
-        {% endfor %}
-
-      </div>
-    {% endfor %}
-  {% endfor %}
-
-<!-- ================= EDIT FATIGUE MODAL ================= -->
-<div id="editFatigueModal" class="modal-overlay">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3>✏️ Edit Working Hours</h3>
-      <button class="modal-close" onclick="closeFatigueModal()">×</button>
     </div>
 
-    <form method="POST" action="/fatigue/update" class="modal-form">
-      <input type="hidden" name="id" id="edit_id">
-
-      <div class="form-grid">
-        <div>
-          <label>Date</label>
-          <input type="date" name="date" id="edit_date" required>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="card h-100 shadow-sm border-0" style="border-left: 4px solid #0056b3 !important;">
+                <div class="card-body py-3">
+                    <div class="text-muted small text-uppercase fw-bold" id="global-engen-title">Engen Fleet Summary</div>
+                    <div class="d-flex align-items-baseline mt-2">
+                        <span class="fs-3 fw-bold text-dark" id="global-engen-hours">{{ global_totals.engen_hours }}</span>
+                        <span class="text-muted ms-1 small">hrs</span>
+                    </div>
+                    <div class="text-secondary small mt-1">
+                        <i class="bi bi-calendar-check text-primary me-1"></i> <strong id="global-engen-days">{{ global_totals.engen_days }}</strong> Active Duty Days
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div>
-          <label>Driver Name</label>
-          <input type="text" name="driver_name" id="edit_driver" required>
+        <div class="col-12 col-md-4">
+            <div class="card h-100 shadow-sm border-0" style="border-left: 4px solid #ff6b00 !important;">
+                <div class="card-body py-3">
+                    <div class="text-muted small text-uppercase fw-bold" id="global-puma-title">Puma Fleet Summary</div>
+                    <div class="d-flex align-items-baseline mt-2">
+                        <span class="fs-3 fw-bold text-dark" id="global-puma-hours">{{ global_totals.puma_hours }}</span>
+                        <span class="text-muted ms-1 small">hrs</span>
+                    </div>
+                    <div class="text-secondary small mt-1">
+                        <i class="bi bi-calendar-check text-warning me-1"></i> <strong id="global-puma-days">{{ global_totals.puma_days }}</strong> Active Duty Days
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div>
-          <label>Start Time</label>
-          <input type="time" name="start_time" id="edit_start">
+        <div class="col-12 col-md-4">
+            <div class="card h-100 shadow-sm border-0" style="border-left: 4px solid #6c757d !important;">
+                <div class="card-body py-3">
+                    <div class="text-muted small text-uppercase fw-bold" id="global-adhoc-title">Adhoc (Other) Summary</div>
+                    <div class="d-flex align-items-baseline mt-2">
+                        <span class="fs-3 fw-bold text-dark" id="global-other-hours">{{ global_totals.other_hours }}</span>
+                        <span class="text-muted ms-1 small">hrs</span>
+                    </div>
+                    <div class="text-secondary small mt-1">
+                        <i class="bi bi-calendar-check text-secondary me-1"></i> <strong id="global-other-days">{{ global_totals.other_days }}</strong> Active Duty Days
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
+    <hr class="mb-4">
 
-        <div>
-          <label>End Time</label>
-          <input type="time" name="end_time" id="edit_end">
+    <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-3">Log Driver Working Hours</h5>
+            <form method="POST">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="small fw-bold">DATE</label>
+                        <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small fw-bold">DRIVER NAME</label>
+                        <select name="driver_name" id="main_driver_select" class="form-select" required>
+                            <option value="">Select Driver</option>
+                            {% for d in drivers %}
+                            <option value="{{ d['NAME/SURNAME'] }}">{{ d['NAME/SURNAME'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold">CUSTOMER</label>
+                        <select name="customer" class="form-select" required>
+                            <option value="Engen">Engen</option>
+                            <option value="Puma">Puma</option>
+                            <option value="Other">Other (Adhoc)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold">OFF DAY</label>
+                        <select name="off_day" class="form-select">
+                            <option value="no">Working Day</option>
+                            <option value="yes">Off Day</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="small fw-bold">START</label>
+                        <input type="time" name="start_time" class="form-control">
+                    </div>
+                    <div class="col-md-1">
+                        <label class="small fw-bold">END</label>
+                        <input type="time" name="end_time" class="form-control">
+                    </div>
+                    <div class="col-md-12">
+                        <textarea name="after_hours_reason" class="form-control" rows="1" placeholder="After hours reason (if any)"></textarea>
+                    </div>
+                    <div class="col-md-12 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-navy px-5 shadow-sm">
+                            <i class="fas fa-save me-2"></i> Save Log Sheet Entry
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <div>
-          <label>Off Day</label>
-          <select name="off_day" id="edit_off_day">
-            <option value="no">Working Day</option>
-            <option value="yes">Off Day</option>
-          </select>
-        </div>
+    <div class="tabs mb-3" id="yearTabs">
+        {% for year in structure.keys() %}
+          <div class="tab-btn {% if year|string == current_year|string %}active{% endif %}" data-year="{{ year }}">{{ year }}</div>
+        {% endfor %}
+    </div>
 
-        <div>
-          <label>After Hours Reason</label>
-          <textarea name="after_hours_reason" id="edit_reason"></textarea>
-        </div>
-      </div>
+    {% for year, months in structure.items() %}
+    <div class="sub-tabs-row year-block mb-3" id="year-{{ year }}" {% if year|string != current_year|string %}style="display:none"{% endif %}>
+        {% for month in months.keys() %}
+          <div class="sub-tab-btn {% if month == current_month %}active{% endif %}" data-month="{{ month }}" data-year="{{ year }}">{{ month }}</div>
+        {% endfor %}
+    </div>
+    {% endfor %}
 
-      <div class="modal-actions">
-        <button type="button" class="btn-secondary" onclick="closeFatigueModal()">Cancel</button>
-        <button type="submit" class="btn-primary">💾 Save Changes</button>
-      </div>
-    </form>
-  </div>
+    {% for year, months in structure.items() %}
+        {% for month, drivers_data in months.items() %}
+            {% set month_totals = monthly_customer_totals[year][month] if (year in monthly_customer_totals and month in monthly_customer_totals[year]) else none %}
+            <div class="month-block" id="month-{{ year }}-{{ month }}" 
+                 data-engen-hours="{{ month_totals.engen_hours if month_totals else 0.0 }}"
+                 data-engen-days="{{ month_totals.engen_days if month_totals else 0 }}"
+                 data-puma-hours="{{ month_totals.puma_hours if month_totals else 0.0 }}"
+                 data-puma-days="{{ month_totals.puma_days if month_totals else 0 }}"
+                 data-other-hours="{{ month_totals.other_hours if month_totals else 0.0 }}"
+                 data-other-days="{{ month_totals.other_days if month_totals else 0 }}"
+                 {% if not (year|string == current_year|string and month == current_month) %}style="display:none"{% endif %}>
+
+                <div class="d-flex align-items-center gap-3 mb-3 p-2 bg-light rounded shadow-sm">
+                    <div class="position-relative" style="min-width: 250px;">
+                        <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" class="form-control ps-5 driver-search-input" 
+                               placeholder="Search driver in {{ month }}..." 
+                               data-year="{{ year }}" data-month="{{ month }}">
+                    </div>
+                    <div class="driver-tabs-row flex-grow-1">
+                        {% for driver in drivers_data.keys() %}
+                            <div class="driver-tab" data-driver="{{ driver }}" data-month="{{ month }}" data-year="{{ year }}">{{ driver }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {% for driver, days in drivers_data.items() %}
+                <div class="driver-block" data-driver="{{ driver }}" data-month="{{ month }}" data-year="{{ year }}" style="display:none">
+
+                    {% set key = (driver, month) %}
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <div class="stat-card h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                    <h6>Total Shift Summary</h6>
+                                    <p>{{ monthly_summary[key].total_hours if key in monthly_summary else 0 }} <small class="fs-6 text-muted">Hrs</small></p>
+                                </div>
+                                <div class="border-top pt-2 mt-2 row g-0 text-start small text-muted">
+                                    <div class="col-6">Days Worked: <strong>{{ monthly_summary[key].days_worked if key in monthly_summary else 0 }}</strong></div>
+                                    <div class="col-6 text-end text-danger">Violations: <strong>{{ monthly_summary[key].violations if key in monthly_summary else 0 }}</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card h-100 border-start border-warning border-4">
+                                <h6>Engen Fleet KPIs</h6>
+                                <p class="text-warning">{{ monthly_summary[key].engen_hours if key in monthly_summary else 0 }} <small class="fs-6 text-muted">Hrs</small></p>
+                                <span class="badge bg-light text-dark small border">Days: {{ monthly_summary[key].engen_days if key in monthly_summary else 0 }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card h-100 border-start border-primary border-4">
+                                <h6>Puma Fleet KPIs</h6>
+                                <p class="text-primary">{{ monthly_summary[key].puma_hours if key in monthly_summary else 0 }} <small class="fs-6 text-muted">Hrs</small></p>
+                                <span class="badge bg-light text-dark small border">Days: {{ monthly_summary[key].puma_days if key in monthly_summary else 0 }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card h-100 border-start border-secondary border-4">
+                                <h6>Other / Adhoc KPIs</h6>
+                                <p class="text-secondary">{{ monthly_summary[key].other_hours if key in monthly_summary else 0 }} <small class="fs-6 text-muted">Hrs</small></p>
+                                <span class="badge bg-light text-dark small border">Days: {{ monthly_summary[key].other_days if key in monthly_summary else 0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white py-3 border-0">
+                            <h6 class="mb-0 fw-bold text-navy">📋 {{ driver }} – Daily Log Sheets ({{ month }})</h6>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light small">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Customer Allocation</th>
+                                        <th>Shift Start</th>
+                                        <th>Shift End</th>
+                                        <th>Hours Worked</th>
+                                        <th>Off Day</th>
+                                        <th>Exception Remarks</th>
+                                        <th>Status Badge</th>
+                                        <th class="text-end">Action Control</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for r in days|sort(attribute="date") %}
+                                    <tr>
+                                        <td class="fw-bold">{{ r.date }}</td>
+                                        <td>
+                                            {% if r.customer|lower == 'engen' %}
+                                                <span class="badge bg-warning text-dark fw-bold px-2 py-1"><i class="fas fa-gas-pump me-1"></i> ENGEN</span>
+                                            {% elif r.customer|lower == 'puma' %}
+                                                <span class="badge bg-primary text-white fw-bold px-2 py-1"><i class="fas fa-truck me-1"></i> PUMA</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary text-white fw-bold px-2 py-1"><i class="fas fa-random me-1"></i> {{ r.customer if r.customer else 'Other' }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ r.start_time or '--:--' }}</td>
+                                        <td>{{ r.end_time or '--:--' }}</td>
+                                        <td class="fw-bold">{{ r.hours_worked }}</td>
+                                        <td>{{ r.off_day|upper }}</td>
+                                        <td class="small text-muted">{{ r.after_hours_reason or '' }}</td>
+                                        <td>
+                                            {% if r.violation %}<span class="badge bg-danger rounded-pill">Violation</span>
+                                            {% elif r.after_hours %}<span class="badge bg-warning text-dark rounded-pill">After Hours</span>
+                                            {% elif r.off_day == "yes" %}<span class="badge bg-info rounded-pill">Off Day</span>
+                                            {% else %}<span class="badge bg-success rounded-pill">OK</span>{% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary me-1" onclick='openFatigueModal({{ r | tojson }})'><i class="fas fa-edit"></i> Edit</button>
+                                            <form action="{{ url_for('delete_fatigue_entry', index=r.index) }}" method="POST" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this log sheet entry?')"><i class="fas fa-trash"></i> Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold mb-3">📅 Weekly Summary Breakdown ({{ month }})</h5>
+                    <div class="row g-3 mb-4">
+                        {% set wk_key = (driver, month) %}
+                        {% if weekly_summary.get(wk_key) %}
+                            {% for week, data in weekly_summary[wk_key].items() %}
+                            <div class="col-md-3">
+                                <div class="card p-3 border-0 shadow-sm bg-light">
+                                    <h6 class="fw-bold text-navy border-bottom pb-2 mb-2">{{ week }}</h6>
+                                    <p class="mb-1 small d-flex justify-content-between"><span>🕒 Total Hours:</span> <strong>{{ data.total_hours }}</strong></p>
+                                    <p class="mb-1 small d-flex justify-content-between"><span>📅 Days Worked:</span> <strong>{{ data.days_worked }}</strong></p>
+                                    <p class="mb-2 small d-flex justify-content-between text-danger"><span>⚠ Violations:</span> <strong>{{ data.violations }}</strong></p>
+                                    
+                                    <div class="pt-2 border-top extra-fine-text">
+                                        <div class="d-flex justify-content-between text-muted"><span>Engen:</span> <span>{{ data.engen_hours or 0 }}h</span></div>
+                                        <div class="d-flex justify-content-between text-muted"><span>Puma:</span> <span>{{ data.puma_hours or 0 }}h</span></div>
+                                        <div class="d-flex justify-content-between text-muted"><span>Other:</span> <span>{{ data.other_hours or 0 }}h</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No weekly calculations generated for this period.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    {% endfor %}
 </div>
 
+<div class="modal fade" id="editFatigueModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-navy text-white">
+                <h5 class="modal-title fw-bold">✏️ Edit Log Sheet Record</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/fatigue/update">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="id" id="edit_id">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="small fw-bold">Date</label><input type="date" name="date" id="edit_date" class="form-control" required></div>
+                        <div class="col-md-6"><label class="small fw-bold">Driver Name</label><input type="text" name="driver_name" id="edit_driver" class="form-control" readonly></div>
+                        
+                        <div class="col-md-12">
+                            <label class="small fw-bold">Customer Allocation</label>
+                            <select name="customer" id="edit_customer" class="form-select" required>
+                                <option value="Engen">Engen</option>
+                                <option value="Puma">Puma</option>
+                                <option value="Other">Other (Adhoc)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6"><label class="small fw-bold">Start Time</label><input type="time" name="start_time" id="edit_start" class="form-control"></div>
+                        <div class="col-md-6"><label class="small fw-bold">End Time</label><input type="time" name="end_time" id="edit_end" class="form-control"></div>
+                        <div class="col-md-12">
+                            <label class="small fw-bold">Off Day</label>
+                            <select name="off_day" id="edit_off_day" class="form-select">
+                                <option value="no">Working Day</option><option value="yes">Off Day</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12"><label class="small fw-bold">After Hours Reason</label><textarea name="after_hours_reason" id="edit_reason" class="form-control"></textarea></div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4">💾 Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-navy { background-color: #001f3f; }
+    .btn-navy { background-color: #001f3f; color: white; }
+    .btn-navy:hover { color: #f8f9fa; opacity: 0.9; }
+    .text-navy { color: #001f3f; }
+    .stat-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
+    .stat-card h6 { font-size: 0.8rem; font-weight: bold; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }
+    .stat-card p { font-size: 1.5rem; font-weight: bold; margin-bottom: 0; color: #001f3f; }
+    .tabs, .sub-tabs-row, .driver-tabs-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+    .tab-btn, .sub-tab-btn, .driver-tab { cursor: pointer; padding: 8px 18px; border-radius: 6px; background: #e9ecef; white-space: nowrap; font-weight: 500; font-size: 0.85rem; transition: 0.2s; }
+    .tab-btn.active, .sub-tab-btn.active, .driver-tab.active { background: #001f3f; color: white; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+    .sub-tab-btn { background: white; border: 1px solid #dee2e6; }
+    .sub-tab-btn.active { background: #0d6efd; border-color: #0d6efd; }
+    .driver-tab { background: #fff; border: 1px solid #dee2e6; color: #495057; }
+    .extra-fine-text { font-size: 0.72rem; line-height: 1.4; }
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+  
+  // DYNAMIC TOP SUMMARY SYNC FUNCTION
+  function syncGlobalTotals(year, month) {
+      const activeBlock = document.getElementById("month-" + year + "-" + month);
+      if (!activeBlock) return;
 
-  // ===== YEAR TABS =====
-  document.querySelectorAll("#yearTabs .tab").forEach(tab => {
+      const engenHours = activeBlock.dataset.engenHours || "0.0";
+      const engenDays  = activeBlock.dataset.engenDays  || "0";
+      const pumaHours  = activeBlock.dataset.pumaHours  || "0.0";
+      const pumaDays   = activeBlock.dataset.pumaDays   || "0";
+      const otherHours = activeBlock.dataset.otherHours || "0.0";
+      const otherDays  = activeBlock.dataset.otherDays  || "0";
+
+      document.getElementById("global-engen-hours").innerText = engenHours;
+      document.getElementById("global-engen-days").innerText  = engenDays;
+      document.getElementById("global-puma-hours").innerText  = pumaHours;
+      document.getElementById("global-puma-days").innerText   = pumaDays;
+      document.getElementById("global-other-hours").innerText = otherHours;
+      document.getElementById("global-other-days").innerText  = otherDays;
+
+      document.getElementById("global-engen-title").innerText = `Engen Fleet Summary (${month})`;
+      document.getElementById("global-puma-title").innerText  = `Puma Fleet Summary (${month})`;
+      document.getElementById("global-adhoc-title").innerText = `Adhoc (Other) Summary (${month})`;
+  }
+
+  // 1. YEAR NAVIGATION CONTROL
+  document.querySelectorAll(".tab-btn").forEach(tab => {
     tab.addEventListener("click", function () {
-      document.querySelectorAll("#yearTabs .tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(t => t.classList.remove("active"));
       this.classList.add("active");
-
       const year = this.dataset.year;
-
       document.querySelectorAll(".year-block").forEach(b => b.style.display = "none");
       document.getElementById("year-" + year).style.display = "flex";
-
-      document.querySelectorAll(".month-block").forEach(b => b.style.display = "none");
-      const firstMonthTab = document.querySelector(`#year-${year} .sub-tab`);
-      if (firstMonthTab) firstMonthTab.click();
+      
+      const currentMonth = "{{ current_month }}";
+      let monthToClick = document.querySelector(`#year-${year} .sub-tab-btn[data-month="${currentMonth}"]`);
+      if (!monthToClick) monthToClick = document.querySelector(`#year-${year} .sub-tab-btn`);
+      if (monthToClick) monthToClick.click();
     });
   });
 
-  // ===== MONTH TABS =====
-  document.querySelectorAll(".sub-tab").forEach(tab => {
+  // 2. MONTH NAVIGATION CONTROL
+  document.querySelectorAll(".sub-tab-btn").forEach(tab => {
     tab.addEventListener("click", function () {
-      document.querySelectorAll(".sub-tab").forEach(t => t.classList.remove("active"));
+      const year = this.dataset.year; const month = this.dataset.month;
+      const parentYearBlock = document.getElementById("year-" + year);
+      
+      parentYearBlock.querySelectorAll(".sub-tab-btn").forEach(t => t.classList.remove("active"));
       this.classList.add("active");
-
-      const year = this.dataset.year;
-      const month = this.dataset.month;
-
+      
       document.querySelectorAll(".month-block").forEach(b => b.style.display = "none");
-      const monthBlock = document.getElementById("month-" + year + "-" + month);
-      if (monthBlock) monthBlock.style.display = "block";
+      const block = document.getElementById("month-" + year + "-" + month);
+      if (block) block.style.display = "block";
 
-      const firstDriverTab = monthBlock.querySelector(".driver-tabs .tab");
-      if (firstDriverTab) firstDriverTab.click();
+      syncGlobalTotals(year, month);
+
+      const lastDriver = localStorage.getItem('lastFatigueDriver');
+      let driverToClick = block.querySelector(`.driver-tab[data-driver="${lastDriver}"]`);
+      if (!driverToClick) driverToClick = block.querySelector(".driver-tab");
+      if (driverToClick) driverToClick.click();
     });
   });
 
-  // ===== DRIVER TABS =====
-  document.querySelectorAll(".tab[data-driver]").forEach(tab => {
+  // 3. DRIVER PROFILE CARD FILTERING
+  document.querySelectorAll(".driver-tab").forEach(tab => {
     tab.addEventListener("click", function () {
-      const year = this.dataset.year;
-      const month = this.dataset.month;
-      const driver = this.dataset.driver;
-
-      const parentBlock = document.getElementById("month-" + year + "-" + month);
-
-      parentBlock.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      const year = this.dataset.year; const month = this.dataset.month; const driver = this.dataset.driver;
+      const parent = document.getElementById("month-" + year + "-" + month);
+      
+      parent.querySelectorAll(".driver-tab").forEach(t => t.classList.remove("active"));
       this.classList.add("active");
-
-      parentBlock.querySelectorAll(".driver-block").forEach(b => b.style.display = "none");
-      const driverBlock = parentBlock.querySelector(`.driver-block[data-driver="${driver}"]`);
-      if (driverBlock) driverBlock.style.display = "block";
+      
+      parent.querySelectorAll(".driver-block").forEach(b => b.style.display = "none");
+      const targetBlock = parent.querySelector(`.driver-block[data-driver="${driver}"]`);
+      if(targetBlock) targetBlock.style.display = "block";
+      
+      localStorage.setItem('lastFatigueDriver', driver);
     });
   });
 
-  // ===== AUTO OPEN CURRENT YEAR → MONTH → FIRST DRIVER =====
-  const activeYearTab = document.querySelector("#yearTabs .tab.active");
-  if (activeYearTab) activeYearTab.click();
+  // 4. INSTANT SEARCH ALGORITHM
+  document.querySelectorAll(".driver-search-input").forEach(input => {
+    input.addEventListener("keyup", function() {
+      const filter = this.value.toLowerCase();
+      const parentBlock = this.closest(".month-block");
+      const tabs = parentBlock.querySelectorAll(".driver-tab");
+      
+      tabs.forEach(tab => {
+        const text = tab.innerText.toLowerCase();
+        tab.style.display = text.includes(filter) ? "block" : "none";
+      });
+    });
+  });
 
+  // 5. TRIGGER ONLOAD
+  const currentYear = "{{ current_year }}";
+  let yearTab = document.querySelector(`.tab-btn[data-year="${currentYear}"]`);
+  if (!yearTab) yearTab = document.querySelector(".tab-btn");
+  if (yearTab) yearTab.click();
 });
+
 function openFatigueModal(entry) {
-  document.getElementById("edit_id").value = entry.id;
+  document.getElementById("edit_id").value = entry.id !== undefined ? entry.id : entry.index;
   document.getElementById("edit_date").value = entry.date;
   document.getElementById("edit_driver").value = entry.driver_name;
-  document.getElementById("edit_start").value = entry.start_time;
-  document.getElementById("edit_end").value = entry.end_time;
-  document.getElementById("edit_off_day").value = entry.off_day;
+  document.getElementById("edit_customer").value = entry.customer || "Engen";
+  document.getElementById("edit_start").value = entry.start_time || "";
+  document.getElementById("edit_end").value = entry.end_time || "";
+  document.getElementById("edit_off_day").value = entry.off_day || "no";
   document.getElementById("edit_reason").value = entry.after_hours_reason || "";
-
-  document.getElementById("editFatigueModal").style.display = "flex";
-}
-
-function closeFatigueModal() {
-  document.getElementById("editFatigueModal").style.display = "none";
+  new bootstrap.Modal(document.getElementById('editFatigueModal')).show();
 }
 </script>
-
 {% endblock %}

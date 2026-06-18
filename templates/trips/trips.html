@@ -1,6 +1,304 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+    .table-wrapper {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        
+        /* FIX: Forces height and enables internal scroll */
+        height: 1200px !important;
+        max-height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: auto !important; 
+        display: block; 
+
+        margin-top: 20px;
+        border: 1px solid #eef2f7;
+    }
+
+    /* Container for Action Buttons */
+      .action-box {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+      }
+
+      /* Base style for the Action Tiles */
+      .btn-tile {
+          width: 34px;
+          height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          border: 1.5px solid #f1f5f9;
+          background: #ffffff;
+          color: #94a3b8; /* Soft grey icon by default */
+          transition: all 0.2s ease;
+          cursor: pointer;
+          padding: 0;
+      }
+
+      /* Edit Tile - Hover Blue */
+      .btn-tile-edit:hover {
+          color: #3b82f6;
+          background: #eff6ff;
+          border-color: #3b82f6;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+      }
+
+      /* Delete Tile - Hover Red */
+      .btn-tile-delete:hover {
+          color: #ef4444;
+          background: #fef2f2;
+          border-color: #ef4444;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+      }
+
+      /* Ensure font-awesome icons are sized right */
+      .btn-tile i {
+          font-size: 0.9rem;
+      }
+
+    /* Status Row Colors */
+    .row-loading { background-color: #fef3c7 !important; }  /* Light Orange/Yellow */
+    .row-transit { background-color: #e0f2fe !important; }  /* Light Blue */
+    .row-offloaded { background-color: #f3e8ff !important; } /* Light Purple */
+    .row-invoiced { background-color: #ffffff !important; }  /* Pure White */
+
+    .data-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.85rem;
+    }
+
+    /* Sticky Header */
+    .data-table thead th {
+        background-color: #f8fafc;
+        color: #64748b;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        padding: 14px 12px;
+        border-bottom: 2px solid #edf2f7;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        white-space: nowrap;
+    }
+    
+    /* Sticky Footer row */
+    .add-row {
+        position: sticky;
+        bottom: 0;
+        background-color: #f8fafc !important;
+        z-index: 30;
+        box-shadow: 0 -5px 10px rgba(0,0,0,0.05);
+        border-top: 2px solid #3b82f6;
+    }
+
+    .data-table tbody tr td {
+        background-color: inherit;
+        padding: 12px;
+        border-bottom: 1px solid #edf2f7;
+        vertical-align: middle;
+        color: #334155;
+        white-space: nowrap; /* Keeps long words like Pietermaritzburg on one line */
+    }
+
+    /* Fix for Position Input width */
+    .pos-input {
+        min-width: 200px !important;
+    }
+
+    .diff-box { font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+    .text-danger { background: #fee2e2; color: #dc2626; }
+    .text-success { background: #dcfce7; color: #16a34a; }
+    .text-warning { background: #fef3c7; color: #d97706; }
+
+    .add-row input, .add-row select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.8rem;
+    }
+
+    .add-btn {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    /* 1. TABLE CONTAINER & HEIGHT FIX */
+    .table-wrapper {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        height: 70vh !important; /* Fixed height for the container */
+        min-height: 500px;
+        overflow-y: auto !important; /* Vertical scroll for many rows */
+        overflow-x: auto !important; /* Horizontal scroll for all 24 columns */
+        display: block; 
+        margin-top: 20px;
+        border: 1px solid #eef2f7;
+    }
+
+    /* 2. DYNAMIC ROW COLORS */
+    .row-loading { background-color: #fef3c7 !important; }  /* Amber */
+    .row-transit { background-color: #e0f2fe !important; }  /* Blue */
+    .row-offloaded { background-color: #f3e8ff !important; } /* Purple */
+    .row-invoiced { background-color: #ffffff !important; }  /* White */
+
+    .data-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.72rem; /* Slightly smaller to fit more data */
+    }
+
+    /* 3. STICKY HEADER */
+    .data-table thead th {
+        background-color: #f8fafc;
+        color: #64748b;
+        font-weight: 400;
+        text-transform: uppercase;
+        padding: 12px;
+        border-bottom: 2px solid #edf2f7;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        white-space: nowrap; /* Keeps headers on one line */
+    }
+
+    .data-table tbody tr td {
+        padding: 10px;
+        border-bottom: 1px solid #edf2f7;
+        vertical-align: middle;
+        white-space: nowrap; /* Keeps data clean */
+        background-color: inherit;
+    }
+
+    /* 4. POSITION COLUMN WIDTH FIX */
+    /* Ensuring "Approaching Pietermaritzburg" fits */
+    .pos-field {
+        min-width: 200px !important;
+        padding: 5px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+    }
+
+    /* 5. STICKY ADD-ROW */
+    .add-row {
+        position: sticky;
+        bottom: 0;
+        background-color: #f1f5f9 !important;
+        z-index: 30;
+        box-shadow: 0 -5px 10px rgba(0,0,0,0.05);
+    }
+
+    .add-row input, .add-row select {
+        padding: 6px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+    
+    .add-btn {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Difference Colors */
+    .text-danger { color: #dc2626; font-weight: bold; }
+    .text-warning { color: #d97706; font-weight: bold; }
+    .text-success { color: #16a34a; font-weight: bold; }
+
+    /* --- Modern Tab Styling --- */
+.tabs, .status-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.tab-btn, .status-tabs button {
+    padding: 8px 18px;
+    border: 1px solid #dee2e6;
+    border-radius: 25px; /* Pill shape */
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.tab-btn:hover, .status-tabs button:hover {
+    background: #e9ecef;
+    border-color: #ced4da;
+}
+
+.tab-btn.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+    box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+}
+
+/* Specific Status Colors */
+.status-tabs button[onclick*="IN TRANSIT"]:hover { background: #fff3cd; border-color: #ffc107; }
+.status-tabs button[onclick*="OFFLOADED"]:hover { background: #d1e7dd; border-color: #198754; }
+
+.data-table tbody tr {
+    transition: opacity 0.2s ease, display 0.2s ease;
+}
+
+.data-table tbody tr[style*="display: none"] {
+    opacity: 0;
+}
+
+/* Style for the new status buttons */
+.status-btn {
+    padding: 6px 16px;
+    border: 1px solid #dee2e6;
+    border-radius: 20px;
+    background: #fff;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.status-btn:hover { background: #f8f9fa; }
+
+/* The Active State - Make it match your theme */
+.status-btn.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+/* Optional: Different colors for specific states */
+.status-btn.active[onclick*="LOADING"] { background: #0dcaf0; border-color: #0dcaf0; }
+.status-btn.active[onclick*="TRANSIT"] { background: #ffc107; color: #000; border-color: #ffc107; }
+.status-btn.active[onclick*="OFFLOADED"] { background: #198754; border-color: #198754; }
+</style>
+
+<div class="table-responsive">
 <div class="page">
   <h2><strong>Trips</strong></h2>
 
@@ -34,6 +332,38 @@
         scrollTableToBottom(currentMonth);
       }
     });
+
+    function scrollTableToBottom(monthName) {
+        const wrapper = document.querySelector(`#${monthName} .table-wrapper`);
+        if (wrapper) {
+            // Use setTimeout to ensure the browser has finished rendering the rows
+            setTimeout(() => {
+                wrapper.scrollTop = wrapper.scrollHeight;
+            }, 50);
+        }
+    }
+
+    function filterStatus(month, status, btnElement) {
+        // 1. Target the specific table
+        const table = document.getElementById('table-' + month);
+        const rows = table.querySelectorAll("tbody tr");
+        
+        // 2. Filter rows
+        rows.forEach(row => {
+            if (status === 'all') {
+                row.style.display = "";
+            } else {
+                row.style.display = (row.getAttribute('data-status') === status) ? "" : "none";
+            }
+        });
+
+        // 3. Visual: Toggle active class on buttons within this specific container
+        const container = btnElement.parentElement;
+        container.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+        btnElement.classList.add('active');
+    }
+
+
 
     function scrollTableToBottom(monthName) {
       const wrapper = document.querySelector(`#${monthName} .table-wrapper`);
@@ -90,21 +420,41 @@
     {% endfor %}
   </div>
 
-  <!-- Search bar -->
-  <input type="text"
-         class="trip-search"
-         placeholder="Search trips..."
-         onkeyup="filterCurrentMonth(this.value)">
-
-  <!-- Hidden field to store active month -->
-  <input type="hidden" name="active_month" id="active-month">
+  
 
   <!-- ================= MONTH CONTENT ================= -->
   {% for month in all_months %}
     {% set trips = trips_by_month.get(month, []) %}
     <div class="tab-content" id="{{ month }}">
       <h3><strong>{{ month }} Trips</strong></h3>
-
+        <div class="dashboard-cards mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <!--div class="card kpi-card">
+            <span class="label">Revenue (MTD)</span>
+            <h3 class="value text-success">R {{ "{:,.2f}".format(stats.revenue_mtd) }}</h3>
+        </div--->
+        <div class="card kpi-card">
+            <span class="label">Litres Delivered (MTD)</span>
+            <h3 class="value text-success">
+                {{ "{:,.0f}".format(mtd_litres) }}L
+            </h3>
+        </div>
+        <div class="card kpi-card">
+            <span class="label">Fuel Consumed</span>
+            <h3 class="value text-primary">{{ "{:,.0f}".format(stats.fuel_mtd) }} L</h3>
+        </div>
+        <div class="card kpi-card">
+            <span class="label">Trips Completed</span>
+            <h3 class="value"><p>{{ trips | selectattr("position", "equalto", "COMPLETED") | list | length }}</p></h3>
+        </div>
+        <div class="card kpi-card">
+            <span class="label">Total Distance</span>
+            <h3 class="value">{{ "{:,.0f}".format(stats.km_mtd) }} KM</h3>
+        </div>
+        <div class="card kpi-card">
+            <span class="label">Worked Hours</span>
+            <h3 class="value">{{ stats.work_hours_mtd }} Hrs</h3>
+        </div>
+    </div>
       <!-- ================= DASHBOARD CARDS (ABOVE TABLE) ================= -->
       <div class="dashboard-cards">
 
@@ -115,7 +465,7 @@
 
         <div class="card">
           <h4>Completed</h4>
-          <p>{{ trips | selectattr("status", "equalto", "OFFLOADED") | list | length }}</p>
+          <p>{{ trips | selectattr("position", "equalto", "COMPLETED") | list | length }}</p>
         </div>
 
         <div class="card">
@@ -154,263 +504,153 @@
         {% endif %}
 
       </div>
+<!-- Search bar -->
+  <input type="text"
+         class="trip-search"
+         placeholder="Search trips..."
+         onkeyup="filterCurrentMonth(this.value)">
 
+  <!-- Hidden field to store active month -->
+  <input type="hidden" name="active_month" id="active-month">
       <!-- ================= TRIPS TABLE ================= -->
-      <div class="table-wrapper">
-        <table class="data-table" border="1" cellpadding="8">
-          <thead>
-            <tr>
-              <th>Date Loaded</th>
-              <th>Loading Point</th>
-              <th>Truck Reg</th>
-              <th>Trailer Reg</th>
-              <th>Driver</th>
-              <th>Customer</th>
-              <th>Order #</th>
-              <th>Product</th>
-              <th>Litres Loaded</th>
-              <th>Loading KM</th>
-              <th>Loading Time</th>
-              <th>Status</th>
-              <th>Position</th>
-              <th>Offloading Point</th>
-              <th>Date Offloaded</th>
-              <th>Litres Offloaded</th>
-              <th>Offloading KM</th>
-              <th>Offloading Time</th>
-              <th>DN #</th>
-              <th>ETA</th>
-              <th>Difference</th>
-              <th>KM Travelled</th>
-              <th>Time Taken</th>
-              <th>Action</th>
-            </tr>
+
+<button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addTripModal">
+    <i class="fas fa-plus-circle me-2"></i>➕ Add New Load
+</button>
+<div class="status-tabs mb-4">
+    <button type="button" class="btn btn-outline-secondary" onclick="filterStatus('{{ month }}', 'all')">
+        <i class="fas fa-list"></i> All
+    </button>
+    <button type="button" class="btn btn-outline-warning" onclick="filterStatus('{{ month }}', 'IN TRANSIT')">
+        <i class="fas fa-truck"></i> In Transit
+    </button>
+    <button type="button" class="btn btn-outline-success" onclick="filterStatus('{{ month }}', 'OFFLOADED')">
+        <i class="fas fa-check-circle"></i> Offloaded
+    </button>
+</div>
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+                <tr>
+                    <th>Date Loaded</th>
+                    <th>Point</th>
+                    <th>Truck/Trailer</th>
+                    <th>Driver</th>
+                    <th>Product Info</th>
+                    <th>Litres</th>                                      
+                    <th>Offload Info</th>
+                    <th>Status & Position</th>
+                    <th>DN / Diff</th>
+                    <th>Travel</th>
+                    <th>Action</th>
+                </tr>
           </thead>
 
-          <tbody>
-
-            <!-- ================= EXISTING TRIPS ================= -->
-            {% for trip in trips %}
-            {% set diff = trip.difference|float(default=0) %}
-            <tr class="
-              {% if trip.status == 'LOADING' %}row-loading{% endif %}
-              {% if trip.status == 'IN TRANSIT' %}row-transit{% endif %}
-              {% if trip.status == 'OFFLOADED' %}row-offloaded{% endif %}
-            ">
-              <td>{{ trip.date_loaded }}</td>
-              <td>{{ trip.loading_point }}</td>
-              <td>{{ trip.truck_reg }}</td>
-              <td>{{ trip.trailer_reg }}</td>
-              <td>{{ trip.driver }}</td>
-              <td>{{ trip.customer }}</td>
-              <td>{{ trip.order_number }}</td>
-              <td>{{ trip.product }}</td>
-              <td>{{ trip.litres_loaded }}</td>
-              <td>{{ trip.loading_km }}</td>
-              <td>{{ trip.loading_time }}</td>
-
-              <!-- Status + Position update -->
-              <td>
-                <form method="POST" action="/trips/status/{{ trip.order_number }}" style="display:inline;">
-                  <select name="status">
-                    <option value="LOADING" {% if trip.status == "LOADING" %}selected{% endif %}>LOADING</option>
-                    <option value="IN TRANSIT" {% if trip.status == "IN TRANSIT" %}selected{% endif %}>IN TRANSIT</option>
-                    <option value="OFFLOADED" {% if trip.status == "OFFLOADED" %}selected{% endif %}>OFFLOADED</option>
-                  </select>
-                  <input type="text" name="position" value="{{ trip.position }}" placeholder="Position">
-                  <button type="submit">💾</button>
-                </form>
-              </td>
-
-              <td>{{ trip.position }}</td>
-              <td>{{ trip.offloading_point }}</td>
-              <td>{{ trip.date_offloaded }}</td>
-              <td>{{ trip.litres_offloaded }}</td>
-              <td>{{ trip.offloading_km }}</td>
-              <td>{{ trip.offloading_time }}</td>
-              <td>{{ trip.dn_number }}</td>
-              <td>{{ trip.eta }}</td>
-              <td class="
-                    {% if diff < 0 %}text-danger
-                    {% elif diff > 0 %}text-warning
-                    {% else %}text-success
-                    {% endif %}">
-                {{ diff }}
-              </td>
-              <td>{{ trip.km_travelled }}</td>
-              <td>{{ trip.time_taken }}</td>
-
-              <!-- Action buttons -->
-              <td>
-                <button type="button" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">✏️</button>
-                <form method="POST"
-                      action="/trips/delete/{{ trip.order_number }}"
-                      style="display:inline;"
-                      onsubmit="return confirm('Are you sure you want to delete this trip?');">
-                  <button type="submit">🗑️</button>
-                </form>
-              </td>
-            </tr>
-            {% endfor %}
-
-            <!-- ================= ADD NEW TRIP ROW ================= -->
-            <form method="POST" action="/trips">
-              <tr class="add-row">
-                <td><input type="date" name="date_loaded" required></td>
-                <td><input type="text" name="loading_point" placeholder="Loading..."></td>
-                <td><input type="text" name="truck_reg" placeholder="Truck" required></td>
-                <td><input type="text" name="trailer_reg" placeholder="Trailer"></td>
-                <td><input type="text" name="driver" placeholder="Driver" required></td>
-                <td><input type="text" name="customer" placeholder="Customer"></td>
-                <td><input type="text" name="order_number" placeholder="Order #"></td>
-                <td><input type="text" name="product" placeholder="Product"></td>
-                <td><input type="number" name="litres_loaded" placeholder="Litres Loaded"></td>
-                <td><input type="number" name="loading_km" placeholder="Loading KM"></td>
-                <td><input type="time" name="loading_time"></td>
-                <td>
-                  <select name="status">
-                    <option value="LOADING">LOADING</option>
-                    <option value="IN TRANSIT">IN TRANSIT</option>
-                    <option value="OFFLOADED">OFFLOADED</option>
-                  </select>
-                </td>
-                <td><input type="text" name="position" placeholder="Position"></td>
-                <td><input type="text" name="offloading_point" placeholder="Offloading..."></td>
-                <td><input type="date" name="date_offloaded"></td>
-                <td><input type="number" name="litres_offloaded" placeholder="Litres Offloaded"></td>
-                <td><input type="number" name="offloading_km" placeholder="Offloading KM"></td>
-                <td><input type="time" name="offloading_time"></td>
-                <td><input type="text" name="dn_number" placeholder="DN #"></td>
-                <td><input type="text" name="eta" placeholder="ETA"></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td>
-                  <button type="submit" class="add-btn">➕ New Load</button>
-                </td>
-              </tr>
-            </form>
-
-          </tbody>
-        </table>
-      </div>
-
-      <!-- ================= MONTHLY SUMMARY CARDS ================= -->
-      {% set stats = monthly_stats.get(month, {}) %}
-
-      <div class="summary-cards">
-
-        <!-- 1. Turnaround Time by Route -->
-        <div class="summary-card">
-          <h3>Turnaround Time (hrs)</h3>
-          {% for point, avg in stats.get("turnaround_by_point", {}).items() %}
-            <div class="stat-row">
-              <span>{{ point }}</span>
-              <span class="stat-val">{{ avg }} hrs</span>
-            </div>
-          {% else %}
-            <p class="status-msg">No completed trips</p>
-          {% endfor %}
-        </div>
-
-        <!-- 2. Fuel Control by Route -->
-        <div class="summary-card">
-          <h3>Fuel Control</h3>
-          {% for point, fuel in stats.get("fuel_by_point", {}).items() %}
-            <div class="stat-row">
-              <span>{{ point }}</span> 
-            </div>
-            <span class="stat-val">
-                Loaded: {{ fuel.loaded }} L |
-                Offloaded: {{ fuel.offloaded }} L |
-                Diff: {{ fuel.difference }} L
-              </span>
-          {% else %}
-            <p class="status-msg">No fuel data</p>
-          {% endfor %}
-        </div>
-
-        <!-- 3. Kilometres by Route -->
-        <div class="summary-card">
-          <h3>KMs by Route</h3>
-          {% for point, km in stats.get("km_by_point", {}).items() %}
-            <div class="stat-row">
-              <span>{{ point }}</span>
-              <span class="stat-val">{{ km }} km</span>
-            </div>
-          {% else %}
-            <p class="status-msg">No KM data</p>
-          {% endfor %}
-        </div>
-
-        <!-- 4. Customer Activity -->
-        <div class="summary-card">
-          <h3>Customer Activity</h3>
-          {% for customer, count in stats.get("customer_activity", {}).items() %}
-            <div class="stat-row">
-              <span>{{ customer }}</span>
-              <span class="stat-val">{{ count }} trips</span>
-            </div>
-          {% else %}
-            <p class="status-msg">No customer data</p>
-          {% endfor %}
-        </div>
-
-        <!-- 5. Active Drivers -->
-        <div class="summary-card">
-          <h3>Active Drivers</h3>
-          <p class="big-number">{{ stats.get("active_driver_count", 0) }}</p>
-          <p class="status-msg">Drivers with trips this month</p>
-        </div>
-
-        <!-- 6. Idle Fleet -->
-        <div class="summary-card">
-          <h3>Idle Trucks</h3>
-          <p class="big-number">{{ stats.get("idle_truck_count", 0) }}</p>
-          <p class="status-msg">Trucks not currently assigned</p>
-        </div>
-
-        <!-- 7. Best Route -->
-        <div class="summary-card highlight-good">
-          <h3>Best Performing Route</h3>
-          {% if stats.get("fastest_route") %}
-            <p class="big-text">{{ stats.get("fastest_route") }}</p>
-            <p class="status-msg">
-              {{ stats.get("route_turnaround_averages", {}).get(stats.get("fastest_route"), 0) }} hrs avg
-            </p>
-          {% else %}
-            <p class="status-msg">No data</p>
-          {% endif %}
-        </div>
-
-        <!-- 8. Worst Route -->
-        <div class="summary-card highlight-bad">
-          <h3>Worst Performing Route</h3>
-          {% if stats.get("slowest_route") %}
-            <p class="big-text">{{ stats.get("slowest_route") }}</p>
-            <p class="status-msg">
-              {{ stats.get("route_turnaround_averages", {}).get(stats.get("slowest_route"), 0) }} hrs avg
-            </p>
-          {% else %}
-            <p class="status-msg">No data</p>
-          {% endif %}
-        </div>
-
-      </div>
+        <tbody id="table-{{ month }}">
+    {# 1. Define the sorted lists #}
+    {% set sorted = trips | sort(attribute='date_loaded') %}
+    {% set off = sorted | selectattr("status", "equalto", "OFFLOADED") | list %}
+    {% set tra = sorted | selectattr("status", "equalto", "IN TRANSIT") | list %}
+    {% set oth = sorted | rejectattr("status", "in", ["OFFLOADED", "IN TRANSIT"]) | list %}
+    
+    {# 2. Loop through the combined list #}
+    {% for trip in (off + tra + oth) %}
+        {% set diff = trip.difference|float(default=0) %}
+        <tr data-status="{{ trip.status }}" class="
+            {% if trip.status == 'LOADING' %}row-loading{% endif %}
+            {% if trip.status == 'IN TRANSIT' %}row-transit{% endif %}
+            {% if trip.status == 'OFFLOADED' %}row-offloaded{% endif %}
+            {% if trip.status == 'INVOICED' %}row-invoiced{% endif %}
+        ">
+            {# KEEP ALL YOUR ORIGINAL CELLS HERE #}
+            <td><strong>{{ trip.date_loaded }}</strong><br><small class="text-muted">{{ trip.loading_time }}</small></td>
+            <td><i class="fas fa-map-marker-alt text-primary"></i> {{ trip.loading_point }}</td>
+            <td><span class="badge bg-dark">{{ trip.truck_reg }}</span><br><small>{{ trip.trailer_reg }}</small></td>
+            <td><i class="fas fa-user-circle"></i> {{ trip.driver }}</td>
+            <td><small><strong>{{ trip.customer }}</strong></small><br><small><strong>Product:</strong> {{ trip.product }}</small><br><small class="text-secondary">#{{ trip.order_number }}</small></td>
+            <td class="align-middle">
+                <div class="d-flex flex-column gap-1">
+                    <span class="small text-muted">Loaded: <span class="badge badge-xs bg-success-light text-success">{{ trip.litres_loaded }} L</span></span>
+                    <span class="small text-muted">Offloaded: <span class="badge badge-xs bg-danger-light text-danger">{{ trip.litres_offloaded }} L</span></span>
+                </div>
+            </td>
+            <td><small><b>Point:</b> {{ trip.offloading_point }}</small><br><small><b>Date:</b> {{ trip.date_offloaded }}</small></td>
+            <td class="text-center">
+                <div class="cursor-pointer" onclick="openStatusModal('{{ trip.order_number }}', '{{ trip.status }}', '{{ trip.position }}')">
+                    <span class="badge badge-pill {% if trip.status == 'OFFLOADED' %}badge-success{% elif trip.status == 'IN TRANSIT' %}badge-warning{% elif trip.status == 'LOADING' %}badge-info{% else %}badge-secondary{% endif %}">{{ trip.status }}</span>
+                    <div class="text-xs text-muted mt-1">{{ trip.position or 'No position set' }}</div>
+                </div>
+            </td>
+            <td><small>DN: {{ trip.dn_number }}</small><br><small>Diff: <span class="diff-box {% if diff < 0 %}text-danger{% elif diff > 0 %}text-warning{% else %}text-success{% endif %}">{{ diff }}</span></small></td>
+            <td><small>{{ trip.km_travelled }} KM</small><br><small>{{ trip.time_taken }}</small></td>
+            <td class="text-center">
+                <div class="action-box">
+                    {# YOUR ORIGINAL ACTION BUTTONS #}
+                    <button class="btn-tile btn-tile-edit" data-bs-toggle="modal" data-bs-target="#editModal{{ trip.order_number }}"><i class="fas fa-pencil-alt"></i></button>
+                    <form method="POST" action="/trips/delete/{{ trip.order_number }}" onsubmit="return confirm('Confirm Deletion?');" class="m-0">
+                        <button type="submit" class="btn-tile btn-tile-delete"><i class="fas fa-trash-alt"></i></button>
+                    </form>
+                    
+                    {# DYNAMIC PDF LINK #}
+                    {% set client = trip.customer.lower().split(' ')[0] %}
+                    <a href="{{ url_for('generate_loading_advice', client_type=client, order_no=trip.order_number) }}" class="btn btn-sm p-1 text-danger" title="Download PDF"><i class="fas fa-file-pdf fa-lg"></i></a>
+                    
+                    <a href="{{ url_for('generate_emptiness_cert', order_no=trip.order_number) }}" target="_blank" class="btn btn-sm btn-outline-success shadow-sm"><i class="fas fa-check-circle"></i> Emptiness</a>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    </table>
+</div>
+     
 
     </div>
   {% endfor %}
-
+    <div class="modal fade" id="statusModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow">
+            <form id="statusForm" method="POST" action="">
+                <div class="modal-header bg-light">
+                    <h6 class="modal-title font-weight-bold">Update Trip Status</h6>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="small font-weight-bold">Order: <span id="displayOrderNum" class="text-primary"></span></label>
+                        <select name="status" id="modalStatus" class="form-control form-control-sm">
+                            <option value="LOADING">LOADING</option>
+                            <option value="IN TRANSIT">IN TRANSIT</option>
+                            <option value="OFFLOADED">OFFLOADED</option>
+                            <option value="INVOICED">INVOICED</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-bold">Current Position</label>
+                        <input type="text" name="position" id="modalPosition" class="form-control form-control-sm" placeholder="e.g. Near Border">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="submit" class="btn btn-primary btn-sm btn-block text-white">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
   <!-- ================= EDIT MODALS ================= -->
   {% for month in all_months %}
     {% set trips = trips_by_month.get(month, []) %}
     {% for trip in trips %}
-      <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1">
+      <div class="modal fade" id="editModal{{ trip.order_number }}" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <form method="POST" action="/trips/edit/{{ trip.order_number }}" class="modal-content">
 
-            <div class="modal-header">
-              <h5 class="modal-title">Edit Trip — Order {{ trip.order_number }}</h5>
+            <div class="modal-header bg-light">
+              <h5 class="modal-title" style="font-weight: 800;">
+                <i class="fas fa-edit text-primary me-2"></i>Edit Trip — Order {{ trip.order_number }}
+              </h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
@@ -418,133 +658,508 @@
               <div class="row g-3">
 
                 <div class="col-md-4">
-                  <label>Date Loaded</label>
+                  <label class="form-label small fw-bold">Date Loaded</label>
                   <input type="date" name="date_loaded" value="{{ trip.date_loaded }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Loading Point</label>
+                  <label class="form-label small fw-bold">Loading Point</label>
                   <input type="text" name="loading_point" value="{{ trip.loading_point }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Truck Reg</label>
+                  <label class="form-label small fw-bold">Truck Reg</label>
                   <input type="text" name="truck_reg" value="{{ trip.truck_reg }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Trailer Reg</label>
+                  <label class="form-label small fw-bold">Trailer Reg</label>
                   <input type="text" name="trailer_reg" value="{{ trip.trailer_reg }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Driver</label>
+                  <label class="form-label small fw-bold">Driver</label>
                   <input type="text" name="driver" value="{{ trip.driver }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Customer</label>
+                  <label class="form-label small fw-bold">Customer</label>
                   <input type="text" name="customer" value="{{ trip.customer }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Order Number</label>
-                  <input type="text" name="order_number" value="{{ trip.order_number }}" class="form-control" readonly>
+                  <label class="form-label small fw-bold text-muted">Order Number (Locked)</label>
+                  <input type="text" name="order_number" value="{{ trip.order_number }}" class="form-control bg-light" readonly>
                 </div>
 
                 <div class="col-md-4">
-                  <label>Product</label>
+                  <label class="form-label small fw-bold">Product</label>
                   <input type="text" name="product" value="{{ trip.product }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Litres Loaded</label>
-                  <input type="number" name="litres_loaded" value="{{ trip.litres_loaded }}" class="form-control">
+                  <label class="form-label small fw-bold">Litres Loaded</label>
+                  <input type="number" step="any" name="litres_loaded" value="{{ trip.litres_loaded }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Loading KM</label>
+                  <label class="form-label small fw-bold">Loading KM</label>
                   <input type="number" name="loading_km" value="{{ trip.loading_km }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Loading Time</label>
+                  <label class="form-label small fw-bold">Loading Time</label>
                   <input type="time" name="loading_time" value="{{ trip.loading_time }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Status</label>
-                  <select name="status" class="form-select">
-                    <option value="LOADING" {% if trip.status == "LOADING" %}selected{% endif %}>LOADING</option>
-                    <option value="IN TRANSIT" {% if trip.status == "IN TRANSIT" %}selected{% endif %}>IN TRANSIT</option>
-                    <option value="OFFLOADED" {% if trip.status == "OFFLOADED" %}selected{% endif %}>OFFLOADED</option>
-                  </select>
+                  <label class="form-label small fw-bold">Status</label>
+                  <select name="status" class="form-select border-primary status-autofill-trigger">
+                        <option value="LOADING" {% if trip.status == "LOADING" %}selected{% endif %}>LOADING</option>
+                        <option value="IN TRANSIT" {% if trip.status == "IN TRANSIT" %}selected{% endif %}>IN TRANSIT</option>
+                        <option value="OFFLOADED" {% if trip.status == "OFFLOADED" %}selected{% endif %}>OFFLOADED</option>
+                        <option value="INVOICED" {% if trip.status == "INVOICED" %}selected{% endif %}>INVOICED</option>
+                   </select>
                 </div>
 
                 <div class="col-md-4">
-                  <label>Position</label>
-                  <input type="text" name="position" value="{{ trip.position }}" class="form-control">
+                  <label class="form-label small fw-bold">Current Position</label>
+                  <input type="text" name="position" value="{{ trip.position }}" class="form-control position-field">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Offloading Point</label>
+                  <label class="form-label small fw-bold">Offloading Point</label>
                   <input type="text" name="offloading_point" value="{{ trip.offloading_point }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Date Offloaded</label>
+                  <label class="form-label small fw-bold">Date Offloaded</label>
                   <input type="date" name="date_offloaded" value="{{ trip.date_offloaded }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Litres Offloaded</label>
-                  <input type="number" name="litres_offloaded" value="{{ trip.litres_offloaded }}" class="form-control">
+                  <label class="form-label small fw-bold">Litres Offloaded</label>
+                  <input type="number" step="any" name="litres_offloaded" value="{{ trip.litres_offloaded }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Offloading KM</label>
+                  <label class="form-label small fw-bold">Offloading KM</label>
                   <input type="number" name="offloading_km" value="{{ trip.offloading_km }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>Offloading Time</label>
+                  <label class="form-label small fw-bold">Offloading Time</label>
                   <input type="time" name="offloading_time" value="{{ trip.offloading_time }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>DN Number</label>
+                  <label class="form-label small fw-bold">DN Number</label>
                   <input type="text" name="dn_number" value="{{ trip.dn_number }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>ETA</label>
+                  <label class="form-label small fw-bold">ETA</label>
                   <input type="datetime-local" name="eta" value="{{ trip.eta }}" class="form-control">
                 </div>
 
                 <div class="col-md-4">
-                  <label>KM Travelled</label>
+                  <label class="form-label small fw-bold">KM Travelled</label>
                   <input type="number" name="km_travelled" value="{{ trip.km_travelled }}" class="form-control">
                 </div>
 
-                <div class="col-md-4">
-                  <label>Time Taken</label>
-                  <input type="text" name="time_taken" value="{{ trip.time_taken }}" class="form-control">
+                <div class="col-md-12">
+                  <label class="form-label small fw-bold">Time Taken</label>
+                  <input type="text" name="time_taken" value="{{ trip.time_taken }}" class="form-control" placeholder="e.g. 12 hours 30 mins">
                 </div>
 
               </div>
             </div>
 
-            <div class="modal-footer">
-              <button type="submit" class="btn btn-success">Save Changes</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <div class="modal-footer bg-light">
+              <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Discard</button>
+              <button type="submit" class="btn btn-primary fw-bold">Update Trip Details</button>
             </div>
 
           </form>
         </div>
       </div>
     {% endfor %}
-  {% endfor %}
+{% endfor %}
 
 </div>
+</div>
+<div class="modal fade" id="addTripModal" tabindex="-1" aria-labelledby="addTripModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl"> 
+        <form method="POST" action="/trips" class="modal-content border-0 shadow">
+            
+           <div class="modal-header bg-primary text-white d-flex justify-content-between align-items-center">
+              <h5 class="modal-title fw-bold" id="addTripModalLabel">
+                  <i class="fas fa-truck-loading me-2"></i> Register New Load
+              </h5>
+              <div>
+                  <button type="button" class="btn btn-sm btn-light fw-bold me-2" onclick="duplicateLastEntry()">
+                      <i class="fas fa-copy me-1"></i> Copy Last Entry
+                  </button>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+          </div>
+
+            <div class="modal-body bg-light p-4">
+                <div class="mb-4">
+                    <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Core Trip Details</h6>
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Date Loaded</label>
+                            <input type="date" name="date_loaded" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-primary">1. Offloading Filter</label>
+                            <select id="offloading_filter" class="form-select border-primary shadow-sm" onchange="filterOrdersByPoint()">
+                                <option value="">All Destinations</option>
+                                {% set unique_points = [] %}
+                                {% for o in available_orders %}
+                                    {% if o.offloading_point not in unique_points %}
+                                        <option value="{{ o.offloading_point }}">{{ o.offloading_point }}</option>
+                                        {% set _ = unique_points.append(o.offloading_point) %}
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">2. Order Number</label>
+                            <select name="order_number" id="order_selector" class="form-select shadow-sm" onchange="autoFillOrderDetails()" required>
+                                <option value="">Select Order #</option>
+                                {% for o in available_orders %}
+                                <option value="{{ o.order_number }}" 
+                                        class="order-option"
+                                        data-point="{{ o.offloading_point }}"
+                                        data-customer="{{ o.customer }}" 
+                                        data-loading="{{ o.loading_point }}" 
+                                        data-offloading="{{ o.offloading_point }}"
+                                        data-product="{{ o.product }}"> {{ o.order_number }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Customer</label>
+                            <input type="text" name="customer" id="field_customer" class="form-control" placeholder="Customer Name" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Product Type</label>
+                            <input type="text" name="product" id="field_product" class="form-control" placeholder="Product" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Vehicle & Personnel</h6>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-danger">Truck Registration *</label>
+                           <select name="truck_reg" id="truck_selector" class="form-select" onchange="autoFillTrailer()" required>
+                                <option value="">Select Truck</option>
+                                {% for v in vehicles %}
+                                <option value="{{ v.truck_reg }}" data-trailer="{{ v.trailer_reg }}">
+                                    {{ v.truck_reg }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Trailer Registration</label>
+                            <input type="text" name="trailer_reg" id="field_trailer" class="form-control" placeholder="Trailer Reg">
+                            
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-danger">Driver *</label>
+                            <select name="driver" class="form-select border-danger-subtle" required>
+                                <option value="">Select Driver</option>
+                                {% for d in drivers %}
+                                <option value="{{ d['NAME/SURNAME'] }}">{{ d['NAME/SURNAME'] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Status</label>
+                            <select name="status" class="form-select fw-bold text-primary">
+                                <option value="LOADING">LOADING</option>
+                                <option value="IN TRANSIT">IN TRANSIT</option>
+                                <option value="OFFLOADED">OFFLOADED</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Loading Information</h6>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Loading Point</label>
+                            <input type="text" name="loading_point" id="field_loading" class="form-control" placeholder="Depot/Point" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Litres Loaded</label>
+                            <input type="number" name="litres_loaded" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Loading KM</label>
+                            <input type="number" name="loading_km" class="form-control" placeholder="Odometer">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Loading Time</label>
+                            <input type="time" name="loading_time" class="form-control">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Transit & Offloading Info</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Current Position</label>
+                            <input type="text" name="position" class="form-control border-warning" placeholder="Live Location">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Offloading Point</label>
+                            <input type="text" name="offloading_point" id="field_offloading" class="form-control" placeholder="Destination Point" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">ETA</label>
+                            <input type="text" name="eta" class="form-control" placeholder="Expected Arrival">
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Date Offloaded</label>
+                            <input type="date" name="date_offloaded" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Litres Offloaded</label>
+                            <input type="number" name="litres_offloaded" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Offloading KM</label>
+                            <input type="number" name="offloading_km" class="form-control" placeholder="Odometer Off">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Offloading Time</label>
+                            <input type="time" name="offloading_time" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">DN Number</label>
+                            <input type="text" name="dn_number" class="form-control" placeholder="Delivery Note #">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light border-top-0">
+                <button type="button" class="btn btn-outline-secondary fw-bold" data-bs-dismiss="modal">Close</button>
+                
+                <button type="submit" name="action" value="save" class="btn btn-primary fw-bold px-4 shadow-sm">
+                    <i class="fas fa-save me-2"></i>Save Load
+                </button>
+
+                <button type="submit" name="action" value="save_and_print" class="btn btn-danger fw-bold px-4 shadow-sm">
+                    <i class="fas fa-file-pdf me-2"></i>Save & Print LAN
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="modal fade" id="kmWarningModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+            <div class="modal-body text-center p-4">
+                <div style="font-size: 3rem; color: #f59e0b;">⚠️</div>
+                <h5 class="font-weight-bold mt-3">High Mileage Difference!</h5>
+                <p id="kmWarningText" class="text-muted"></p>
+                <p class="font-weight-bold">Are you sure these are the correct kilometers for this specific vehicle?</p>
+                
+                <div class="d-flex gap-2 justify-content-center mt-4">
+                    <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px;">No, let me check</button>
+                    <button type="button" class="btn btn-warning px-4 text-white" id="confirmKmBtn" style="border-radius: 10px; background: #f59e0b;">Yes, proceed</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openStatusModal(orderNum, currentStatus, currentPosition) {
+    // 1. Update the form action URL dynamically
+    document.getElementById('statusForm').action = "/trips/status/" + orderNum;
+    
+    // 2. Set the display text
+    document.getElementById('displayOrderNum').innerText = orderNum;
+    
+    // 3. Set the current values in the inputs
+    document.getElementById('modalStatus').value = currentStatus;
+    document.getElementById('modalPosition').value = currentPosition === 'None' ? '' : currentPosition;
+
+    // 4. Show the modal (standard Bootstrap 4/5 trigger)
+    $('#statusModal').modal('show');
+}
+function filterOrdersByPoint() {
+    const filterValue = document.getElementById('offloading_filter').value;
+    const orderSelector = document.getElementById('order_selector');
+    const options = orderSelector.getElementsByClassName('order-option');
+
+    orderSelector.value = ""; // Reset order selection
+    autoFillOrderDetails(); // Clear fields
+
+    for (let option of options) {
+        const point = option.getAttribute('data-point');
+        if (filterValue === "" || point === filterValue) {
+            option.style.display = "block";
+        } else {
+            option.style.display = "none";
+        }
+    }
+}
+
+function autoFillOrderDetails() {
+    const selector = document.getElementById('order_selector');
+    const selected = selector.options[selector.selectedIndex];
+    
+    // Debugging: Open your browser's Inspect Element -> Console to see this!
+    console.log("Selected Order:", selected ? selected.value : "None");
+    console.log("Product from data-attr:", selected ? selected.getAttribute('data-product') : "None");
+
+    if (selected && selected.value !== "") {
+        // Fill fields
+        document.getElementById('field_customer').value = selected.getAttribute('data-customer') || '';
+        document.getElementById('field_loading').value = selected.getAttribute('data-loading') || '';
+        document.getElementById('field_offloading').value = selected.getAttribute('data-offloading') || '';
+        
+        // This targets the product input using the new ID
+        document.getElementById('field_product').value = selected.getAttribute('data-product') || '';
+    } else {
+        // Clear fields
+        document.getElementById('field_customer').value = '';
+        document.getElementById('field_loading').value = '';
+        document.getElementById('field_offloading').value = '';
+        document.getElementById('field_product').value = '';
+    }
+}
+function autoFillTrailer() {
+    const truckSelector = document.getElementById('truck_selector');
+    const trailerInput = document.getElementById('field_trailer');
+    
+    // Get the selected option
+    const selectedOption = truckSelector.options[truckSelector.selectedIndex];
+    
+    // Get the trailer associated with that truck
+    const trailerReg = selectedOption.getAttribute('data-trailer');
+    
+    // Only fill if a truck is selected and a trailer is defined
+    if (trailerReg && trailerReg !== "None") {
+        trailerInput.value = trailerReg;
+    } else {
+        trailerInput.value = ""; // Clear if no trailer assigned
+    }
+}
+document.addEventListener('change', function(e) {
+    // Check if the changed element is a status dropdown
+    if (e.target.classList.contains('status-trigger')) {
+        
+        // Find the specific modal this dropdown belongs to
+        const modal = e.target.closest('.modal-body');
+        const positionInput = modal.querySelector('.position-field');
+        
+        // If status is OFFLOADED, set position to COMPLETED
+        if (e.target.value === 'OFFLOADED') {
+            positionInput.value = 'COMPLETED';
+            
+            // Optional: Visual feedback to show it changed
+            positionInput.style.backgroundColor = '#f0fdf4'; 
+            setTimeout(() => { positionInput.style.backgroundColor = ''; }, 1000);
+        }
+    }
+});
+function duplicateLastEntry() {
+    // 1. Get the first data row from the table
+    const table = document.querySelector(".data-table");
+    if (!table) return;
+    
+    const firstRow = table.querySelector("tbody tr:not(.add-row)");
+    if (!firstRow) {
+        alert("No previous trips found to copy from.");
+        return;
+    }
+
+    // 2. Map table cells to Modal Input Names
+    // Based on your 24-column structure:
+    // Cell 1: Date, 2: Loading Point, 3: Truck, 4: Trailer, 5: Driver, 6: Customer, 8: Product
+    
+    const modal = document.getElementById('addTripModal');
+    
+    // Helper function to set value by name
+    const setVal = (name, value) => {
+        const input = modal.querySelector(`[name="${name}"]`);
+        if (input) input.value = value.trim();
+    };
+
+    // Extracting data from cells (adjust index if your table order changes)
+    setVal('loading_point', firstRow.cells[1].innerText);
+    
+    // For Truck Reg, we strip the badge styling if present
+    setVal('truck_reg', firstRow.cells[2].innerText);
+    setVal('trailer_reg', firstRow.cells[3].innerText);
+    setVal('driver', firstRow.cells[4].innerText);
+    setVal('customer', firstRow.cells[5].innerText);
+    setVal('product', firstRow.cells[7].innerText);
+    
+    // Usually, you want a new Date and Order #, so we leave those blank 
+    // but we can copy the Loading Point and Offloading Point
+    setVal('offloading_point', firstRow.cells[13].innerText);
+
+    // Visual feedback
+    const copyBtn = event.currentTarget;
+    const originalText = copyBtn.innerHTML;
+    copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    copyBtn.classList.replace('btn-light', 'btn-success');
+    
+    setTimeout(() => {
+        copyBtn.innerHTML = originalText;
+        copyBtn.classList.replace('btn-success', 'btn-light');
+    }, 2000);
+}
+document.getElementById('tripForm').onsubmit = function(e) {
+    const form = this;
+    const truck = document.getElementById('truck_select').value;
+    const km = document.getElementById('offloading_km').value;
+
+    // Only run if not already confirmed by the modal
+    if (!form.dataset.confirmed) {
+        e.preventDefault(); 
+
+        fetch('/check_km', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ truck_reg: truck, offloading_km: km })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'error') {
+                // Hard block for lower KM (Rule A)
+                Swal.fire('Invalid KM', data.msg, 'error'); 
+            } else if (data.status === 'warn') {
+                // Show Warning Modal (Rule B)
+                document.getElementById('kmWarningText').innerText = data.msg;
+                $('#kmWarningModal').modal('show');
+                
+                document.getElementById('confirmKmBtn').onclick = function() {
+                    form.dataset.confirmed = "true";
+                    form.submit();
+                };
+            } else {
+                form.submit(); // Normal range
+            }
+        });
+    }
+};
+
+</script>
 
 {% endblock %}

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Loading Advice - {{ order_no }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #222;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+            background-color: #fff;
+            -webkit-print-color-adjust: exact;
+        }
+        
+        /* Full-Width Header Logo Container Section */
+        .logo-header-container {
+            width: 100%;
+            margin: 0 0 25px 0;
+            padding: 0;
+        }
+        .logo-header-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Content Padding wrapper to give clean look below the banner header */
+        .document-body-content {
+            padding: 0 40px 40px 40px;
+        }
+
+        /* Document Title Block Layout rules */
+        .doc-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .doc-title h2 {
+            display: inline-block;
+            background: #f4f4f4;
+            padding: 8px 45px;
+            border-radius: 4px;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0;
+            border: 1px solid #ddd;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Information Form Grid Layout Matrix */
+        .info-container {
+            width: 100%;
+            margin-bottom: 35px;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-table td {
+            padding: 8px 0;
+            vertical-align: bottom;
+        }
+        .label {
+            font-weight: bold;
+            color: #444;
+            width: 170px;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.02em;
+        }
+        .value {
+            font-size: 14px;
+            border-bottom: 1px solid #ddd;
+            color: #000;
+        }
+
+        /* Compartments Section Headers Layout rules */
+        h4 {
+            color: #d32f2f;
+            border-left: 5px solid #d32f2f;
+            padding-left: 10px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: 0.03em;
+        }
+        
+        /* Loading Pattern Matrix Data Tables */
+        .loading-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .loading-table th {
+            background-color: #333;
+            color: white;
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .loading-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+        .loading-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #eee !important;
+            border-top: 1.5px solid #333;
+        }
+
+        /* Footer Copyrights Context */
+        .footer {
+            margin-top: 50px;
+            font-size: 10px;
+            color: #888;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo-header-container">
+        <img src="{{ logo_path }}" alt="Hippo Transport Banner Logo">
+    </div>
+
+    <div class="document-body-content">
+
+        <div class="doc-title">
+            <h2>LOADING ADVICE</h2>
+        </div>
+
+        <div class="info-container">
+            <table class="info-table">
+                <tr>
+                    <td class="label">Loading Point:</td>
+                    <td class="value" colspan="3"><strong>{{ loading_point }}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label">Company:</td>
+                    <td class="value"><strong>{{ company_name }}</strong></td>
+                    <td class="label" style="padding-left: 40px;">Order Number:</td>
+                    <td class="value"><strong>{{ order_no }}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label">Truck Reg:</td>
+                    <td class="value">{{ truck }}</td>
+                    <td class="label" style="padding-left: 40px;">Customer:</td>
+                    <td class="value"><strong>{{ customer }}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label">Trailer Reg:</td>
+                    <td class="value">{{ trailer }}</td>
+                    <td class="label" style="padding-left: 40px;">Product:</td>
+                    <td class="value">{{ product }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Driver Name:</td>
+                    <td class="value">{{ driver }}</td>
+                    <td class="label" style="padding-left: 40px;">Document Date:</td>
+                    <td class="value">{{ date }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Passport Number:</td>
+                    <td class="value" colspan="3">{{ passport_number }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <h4>Compartments Quantities</h4>
+        <table class="loading-table">
+            <thead>
+                <tr>
+                    <th>Compartment</th>
+                    <th style="text-align: right;">Capacity (Liters)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comp in compartments %}
+                <tr>
+                    <td>Compartment {{ comp.number }}</td>
+                    <td style="text-align: right; font-weight: bold;">{{ "{:,}".format(comp.liters) }} L</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="2" style="text-align: center; color: #777; font-style: italic; padding: 20px;">
+                        No operational compartment configuration found for trailer {{ trailer }}.
+                    </td>
+                </tr>
+                {% endfor %}
+                
+                {% if compartments %}
+                <tr class="total-row">
+                    <td>TOTAL PLANNED VOLUME</td>
+                    <td style="text-align: right; color: #d32f2f;">
+                        {{ "{:,}".format(compartments | map(attribute='liters') | sum) }} L
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        <h4>Seal Configuration</h4>
+        <table class="info-table" style="margin-bottom: 20px;">
+            <tr>
+                <td class="label">Number of Seals:</td>
+                <td class="value">{{ seals.number }}</td>
+                <td class="label" style="padding-left: 40px;">Box Seals:</td>
+                <td class="value">{{ seals.box }}</td>
+            </tr>
+            <tr>
+                <td class="label">Top Seals:</td>
+                <td class="value">{{ seals.top }}</td>
+                <td class="label" style="padding-left: 40px;">Manifold Seals:</td>
+                <td class="value">{{ seals.manifold }}</td>
+            </tr>
+            <tr>
+                <td class="label">Transfer Line Seals:</td>
+                <td class="value">{{ seals.transfer }}</td>
+                <td colspan="2"></td>
+            </tr>
+        </table>
+
+        <div class="footer">
+            <p>Generated by Hippo Transport System &copy; 2026. This document is for loading purposes only.</p>
+        </div>
+
+    </div>
+
+</body>
+</html>

@@ -1,14 +1,1 @@
-date,truck_reg,driver,litres,fuel_station,km_at_fuel,cost,reference,notes
-2026/01/29,HTW022FS,Fusi Mokoena,620,Como Durban,571485,,80029153,
-2026/01/25,HNL763FS,Moeketsi Monaheng,630.03,Como Durban,709505,,80029088,
-2026/01/24,HXM473FS,Moeketsi Mokatana,600.87,Como Durban,471295,,80029075,
-2026/01/24,HTD133FS,Sekome Monokoane,620,Como Durban,636901,,80029076,
-2026/01/25,HMZ106FS,Mosito Makhatha,635.82,Como Durban,800430,,80029087,
-2026/01/26,HTD141FS,Motebang Ratefane,609.47,Como Durban,637280,,,
-2026/01/27,HXM473FS,Libakha Thejane,582.64,Como Durban,472743,,No Slip,
-2026/01/28,HTD141FS,Motebang Ratefane,543.94,Como Durban,638679,,No Slip,
-2026/01/28,HXL962FS,Thapelo Mayipheli,570,Como Durban,497848,,80029138,
-2026/01/28,JHC375FS,Karabo Linake,593.44,Como Durban,189054,,80029134,
-,,,,,,,,
-2026-01-29,HXW402FS,Leabua Phalatsi,640.04,Como Durban,475014,,No Slip,
-2026-01-30,HXM473FS,Daniel Mqwasho,538,Como Durban,474102,,80029171,
+id,order_number,date,truck_reg,driver,litres,km_at_fuel,cost,route,customer,duplicate_reason

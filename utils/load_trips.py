@@ -2,6 +2,8 @@ import csv
 import os
 from datetime import datetime, timedelta
 
+from flask import flash
+
 TRIPS_FILE = "DATA/trips.csv"
 
 
@@ -50,6 +52,8 @@ def save_trips(trips):
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(trips)
+
+
 def format_duration(total_minutes):
     hours = total_minutes // 60
     minutes = total_minutes % 60
@@ -63,7 +67,9 @@ def calculate_km_and_time(trip):
     if loading_km and offloading_km and offloading_km > loading_km:
         trip["km_travelled"] = str(offloading_km - loading_km)
     else:
-        trip["km_travelled"] = "0"
+        trip["km_travelled"] = 0
+       
+        return
 
     # Litres difference
     litres_loaded = safe_int(trip.get("litres_loaded"))
@@ -124,11 +130,13 @@ def add_trip(form_data):
     return True
 
 
-def delete_trip(order_number):
+# 1. Rename the helper function
+def perform_trip_deletion(order_number):
     trips = load_trips()
-    trips = [t for t in trips if t.get("order_number") != order_number]
-    save_trips(trips)
-
+    # Filter the list
+    new_trips = [t for t in trips if str(t.get("order_number")) != str(order_number)]
+    # Save the updated list
+    save_trips(new_trips)
 
 def update_trip(order_number, form_data):
     trips = load_trips()

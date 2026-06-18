@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page" style="padding: 20px; background-color: #fcfcfd; font-family: 'Inter', sans-serif; color: #1e293b;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
+        <div>
+            <h2 style="margin: 0; font-size: 1.6rem; font-weight: 800; color: #0f172a;">
+                Fuel <span style="color: #2563eb;">Intelligence</span>
+            </h2>
+            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 0.85rem;">Fleet-wide consumption analysis and forensic auditing</p>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px;">
+        <div class="kpi-card" style="border-top: 4px solid #2563eb;">
+            <small>TOTAL SPEND</small>
+            <h3>R {{ "{:,.2f}".format(analysis.total_spend) }}</h3>
+        </div>
+        <div class="kpi-card" style="border-top: 4px solid #10b981;">
+            <small>TOTAL LITRES</small>
+            <h3>{{ "{:,.1f}".format(analysis.total_litres) }} L</h3>
+        </div>
+        <div class="kpi-card" style="border-top: 4px solid #f59e0b;">
+            <small>FLEET EFFICIENCY</small>
+            <h3>34.8 <small style="font-size: 0.6em;">L/100</small></h3>
+        </div>
+        <div class="kpi-card" style="border-top: 4px solid #ef4444;">
+            <small>AUDIT ALERTS</small>
+            <h3 style="color: #ef4444;">{{ analysis.alerts|length }} Gaps</h3>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-bottom: 30px;">
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f1f5f9;">
+            <h4 style="margin: 0 0 15px 0; font-size: 1rem; font-weight: 800; color: #1e293b;">
+                <i class="fas fa-truck-moving" style="color: #2563eb; margin-right: 8px;"></i>Truck Efficiency Rating
+            </h4>
+            <div style="max-height: 250px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #f8fafc; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left; font-size: 0.7rem; color: #64748b;">REG</th>
+                            <th style="padding: 10px; text-align: left; font-size: 0.7rem; color: #64748b;">AVG L/100</th>
+                            <th style="padding: 10px; text-align: left; font-size: 0.7rem; color: #64748b;">STATUS</th>
+                            <th style="padding: 10px; text-align: right; font-size: 0.7rem; color: #64748b;">RATING</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg, data in analysis.trucks.items() %}
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px;"><strong>{{ reg }}</strong></td>
+                            <td style="font-weight: 600;">{{ data.efficiency|default('0.0') }} <small>L/100</small></td>
+                            <td>
+                                {% if data.missed > 0 %}
+                                    <span style="color: #ef4444; font-size: 0.65rem; font-weight: 700;">{{ data.missed }} GAPS</span>
+                                {% else %}
+                                    <span style="color: #10b981; font-size: 0.65rem; font-weight: 700;">VERIFIED</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">{{ data.rating|default('⭐⭐⭐') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="background: #1e293b; border-radius: 12px; padding: 20px; color: white;">
+            <h4 style="margin: 0 0 15px 0; font-size: 1rem; font-weight: 800;">Driver Scorecard</h4>
+            <div style="max-height: 250px; overflow-y: auto;">
+                {% for driver, d in analysis.drivers.items() %}
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px;">
+                        <span style="color: #94a3b8;">{{ driver }}</span>
+                        <span style="color: #38bdf8; font-weight: 700;">{{ d.efficiency }} L/100</span>
+                    </div>
+                    <div style="height: 6px; background: #334155; border-radius: 10px; overflow: hidden;">
+                        {% set bar_width = (d.efficiency / 80 * 100)|round if d.efficiency else 0 %}
+                        <div style="width: {{ bar_width }}%; height: 100%; background: linear-gradient(90deg, #38bdf8, #2563eb);"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+{% if analysis.alerts %}
+<div style="background: #fff1f2; border: 1px solid #fda4af; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+        <i class="fas fa-exclamation-circle" style="color: #e11d48; font-size: 1.2rem;"></i>
+        <h4 style="margin: 0; color: #9f1239; font-weight: 800;">Missing Fill-up Detection</h4>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+        {% for alert in analysis.alerts %}
+        <div style="background: white; border-left: 4px solid #e11d48; padding: 12px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <span style="display: block; font-weight: 800; font-size: 0.9rem; color: #1e293b;">{{ alert.truck_reg }}</span>
+                    <span style="font-size: 0.75rem; color: #64748b;">Gap detected between odometer readings:</span>
+                </div>
+                <span style="background: #fff1f2; color: #e11d48; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 700;">
+                    {{ alert.km_gap }} km Missing
+                </span>
+            </div>
+            
+            <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; background: #f8fafc; padding: 8px; border-radius: 4px;">
+                <div style="text-align: center; flex: 1;">
+                    <small style="display: block; font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Last Seen</small>
+                    <strong style="font-size: 0.75rem;">{{ alert.start_date }}</strong>
+                </div>
+                <i class="fas fa-arrow-right" style="color: #cbd5e1; font-size: 0.7rem;"></i>
+                <div style="text-align: center; flex: 1;">
+                    <small style="display: block; font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Next Log</small>
+                    <strong style="font-size: 0.75rem;">{{ alert.end_date }}</strong>
+                </div>
+            </div>
+            
+            <div style="margin-top: 8px; font-size: 0.7rem; color: #475569; border-top: 1px dashed #fda4af; padding-top: 8px;">
+                <i class="fas fa-search" style="margin-right: 5px; color: #2563eb;"></i> 
+                
+                {% if alert.prev_driver == alert.next_driver %}
+                    Check slips for <strong>{{ alert.prev_driver }}</strong> during this window.
+                {% else %}
+                    Check slips between <strong>{{ alert.prev_driver }}</strong> 
+                    and <strong>{{ alert.next_driver }}</strong> during this window.
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+     {% if analysis.missing_logs %}
+        <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+            <h4 style="margin: 0 0 10px 0; color: #9a3412; font-weight: 800;">
+                <i class="fas fa-gas-pump" style="margin-right: 8px;"></i> Unaccounted Trips (Strict Audit)
+            </h4>
+            <p style="font-size: 0.8rem; color: #c2410c; margin-bottom: 15px;">The following trips have been completed but have no fuel entries assigned.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;">
+                {% for m in analysis.missing_logs %}
+                <div style="background: white; border: 1px solid #fed7aa; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="font-size: 0.85rem; color: #1e293b;">#{{ m.order_number }}</strong>
+                        <small style="display: block; color: #64748b;">{{ m.truck }} | {{ m.driver }}</small>
+                        <small style="display: block; color: #64748b;">{{ m.date}}</small>
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button onclick="quickSelectTrip('{{ m.order_number }}')" class="btn-icon edit" title="Add Fuel"><i class="fas fa-plus-circle"></i></button>
+                        <button onclick="forceAcceptTrip('{{ m.order_number }}')" class="btn-icon delete" title="Force Accept"><i class="fas fa-check-double"></i></button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
+        <h5 style="margin: 0 0 15px 0; font-size: 0.85rem; font-weight: 800; color: #475569;">Quick Fuel Log</h5>
+        <form id="addFuelForm" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;">
+            
+            <div>
+                <label class="modal-label">Date</label>
+                <input type="date" name="date" id="add_date" class="form-control" onchange="filterOrdersByDate(this.value, 'add')" required>
+            </div>
+
+            <div>
+                <label class="modal-label">Order #</label>
+                <select name="order_number" id="add_order" class="form-control" onchange="checkDuplicate(this.value); autoPopulate(this.value, 'add')" required>
+                    <option value="">Select Date...</option>
+                    {% for t in unassigned_trips %}
+                        <option value="{{ t.order_number }}" data-date="{{ t.date }}">#{{ t.order_number }} - {{ t.destination }}</option>
+                    {% endfor %}
+                    <option value="CUSTOM">Manual Entry</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="modal-label">Truck</label>
+                <select name="truck_reg" id="add_truck" class="form-control" required>
+                    <option value="">-- Select Truck --</option>
+                    {% for reg in analysis.trucks.keys()|sort %}
+                        <option value="{{ reg }}">{{ reg }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="modal-label">Driver</label>
+                <select name="driver" id="add_driver" class="form-control" required>
+                    <option value="">-- Select Driver --</option>
+                    {% for name in analysis.drivers.keys()|sort %}
+                        <option value="{{ name }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="modal-label">Litres</label>
+                <input type="number" step="0.01" name="litres" class="form-control" oninput="updateCost(this.value, 'add')" required>
+            </div>
+
+            <div style="display: flex; gap: 5px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label class="modal-label">Odo</label>
+                    <input type="number" name="km_at_fuel" class="form-control" required>
+                </div>
+                <button type="button" id="saveBtn" onclick="submitForm()" class="btn-primary-custom" style="padding: 8px 12px;">
+                    <i class="fas fa-save"></i>
+                </button>
+            </div>
+
+            <div id="duplicate_ui" style="display: none; grid-column: span 6; background: #fff1f2; padding: 10px; border-radius: 8px;">
+                <span style="color: #9f1239; font-size: 0.75rem; font-weight: 700;">Duplicate Order! Reason:</span>
+                <input type="text" name="duplicate_reason" id="add_reason" class="form-control" placeholder="Why refill?">
+                <input type="hidden" name="force_add" id="add_force" value="false">
+            </div>
+        </form>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0px;">
+        <div style="display: flex; gap: 5px; border-bottom: 2px solid #e2e8f0; overflow-x: auto;">
+            {% set month_map = {} %}
+            {# We only show tabs for the logs currently being displayed #}
+            {% for f in fuel_logs %}
+                {% if f.date %}
+                    {% set _ = month_map.update({f.date[:7]: 1}) %}
+                {% endif %}
+            {% endfor %}
+
+            {% for m_key in month_map.keys()|sort(reverse=True) %}
+                <button class="tab-btn {% if loop.first %}active-tab{% endif %}" 
+                        onclick="showMonth('tab-{{ m_key }}', this)">
+                    {{ m_key }}
+                </button>
+            {% endfor %}
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="globalSearch" placeholder="Search..." class="form-control" style="width: 150px;" onkeyup="runFilters()">
+            <select id="truckFilter" class="form-control" onchange="runFilters()">
+                <option value="">All Trucks</option>
+                {% for reg in analysis.trucks.keys()|sort %}<option value="{{ reg }}">{{ reg }}</option>{% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div style="background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; overflow: hidden;">
+        {% for m_key in month_map.keys()|sort(reverse=True) %}
+        <div id="tab-{{ m_key }}" class="month-content" style="display: {% if loop.first %}block{% else %}none{% endif %};">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: #3193f6; color: white;">
+                    <tr>
+                        <th class="th-main">DATE / ORDER</th>
+                        <th class="th-main">TRUCK</th>
+                        <th class="th-main">DRIVER</th>
+                        <th class="th-main">ODOMETER</th>
+                        <th class="th-main">VOL (L)</th>
+                        <th class="th-main">EFFICIENCY</th>
+                        <th class="th-main" style="text-align: right; padding-right: 20px;">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fuel_logs|sort(attribute='date', reverse=True) %}
+                    {% if f.date[:7] == m_key %}
+                    <tr class="fuel-row" data-truck="{{ f.truck_reg }}" data-driver="{{ f.driver }}">
+                        <td style="padding: 12px 20px;"><strong>{{ f.date }}</strong><br><small>#{{ f.order_number or 'Manual' }}</small></td>
+                        <td><span class="reg-tag">{{ f.truck_reg }}</span></td>
+                        <td>{{ f.driver }}</td>
+                        <td style="font-family: monospace;">{{ f.km_at_fuel }} km</td>
+                        <td style="font-weight: 700;">{{ f.litres }} L</td>
+                        <td>
+                            {% if f.calculated_efficiency %}
+                                <span style="color: {{ '#ef4444' if f.calculated_efficiency > 48 else '#10b981' }}; font-weight: 700;">
+                                    {{ f.calculated_efficiency }} <small>L/100</small>
+                                </span>
+                            {% else %}
+                                <small style="color: #cbd5e1;">Initial Fill</small>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right; padding-right: 20px;">
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <button onclick='openEditModal({{ f|tojson }})' class="btn-icon edit"><i class="fas fa-edit"></i></button>
+                                <a href="/fuel/delete/{{ f.id }}" onclick="return confirm('Delete log?')" class="btn-icon delete"><i class="fas fa-trash"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="editModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
+    <form action="/fuel/edit" method="POST" onsubmit="showLoading(this)" style="background: white; padding: 30px; border-radius: 20px; width: 450px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <h4 style="margin: 0; font-weight: 800;">Update Fuel Log</h4>
+            <button type="button" onclick="closeModal()" style="border:none; background:none; cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <input type="hidden" name="id" id="modal_id">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+                <label class="modal-label">Order #</label>
+                <select name="order_number" id="modal_order" class="form-control" onchange="autoPopulate(this.value, 'modal')">
+                    <option value="CUSTOM">Manual Entry</option>
+                    <optgroup label="Unassigned Trips" id="modal_unassigned_group">
+                        {% for t in unassigned_trips %}
+                            <option value="{{ t.order_number }}">#{{ t.order_number }} - {{ t.destination }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+            <div>
+                <label class="modal-label">Date</label>
+                <input type="date" name="date" id="modal_date" class="form-control">
+            </div>
+
+            <div><label class="modal-label">Truck</label><input type="text" name="truck_reg" id="modal_truck" class="form-control"></div>
+            <div><label class="modal-label">Driver</label><input type="text" name="driver" id="modal_driver" class="form-control"></div>
+            
+            <div><label class="modal-label">Litres</label><input type="number" step="0.01" name="litres" id="modal_litres" class="form-control" oninput="updateCost(this.value, 'modal')"></div>
+            <div><label class="modal-label">Odometer</label><input type="number" name="km_at_fuel" id="modal_km" class="form-control"></div>
+            
+            <div style="grid-column: span 2;"><label class="modal-label">Manual Cost Adjustment (R)</label><input type="number" step="0.01" name="cost" id="modal_cost" class="form-control"></div>
+            
+            <div style="grid-column: span 2; margin-top: 10px;">
+                <button type="submit" class="btn-primary-custom" style="width: 100%; padding: 12px;">Save Changes</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    .kpi-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .kpi-card small { color: #64748b; font-weight: 700; }
+    .kpi-card h3 { margin: 5px 0; color: #1e293b; font-size: 1.3rem; }
+    .th-small { padding: 10px; text-align: left; font-size: 0.7rem; color: #64748b; }
+    .th-main { padding: 12px 20px; text-align: left; font-size: 0.7rem; }
+    .badge-red { color: #ef4444; font-size: 0.65rem; font-weight: 700; }
+    .badge-green { color: #10b981; font-size: 0.65rem; font-weight: 700; }
+    .reg-tag { background: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-weight: 800; font-size: 0.75rem; }
+    .tab-btn { padding: 12px 20px; border: none; background: none; font-weight: 700; cursor: pointer; color: #64748b; font-size: 0.85rem; transition: 0.3s; }
+    .active-tab { color: #2563eb !important; border-bottom: 3px solid #2563eb !important; background: #eff6ff !important; border-radius: 8px 8px 0 0; }
+    .modal-label { font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
+    .form-control { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; width: 100%; font-size: 0.85rem; }
+    .btn-primary-custom { background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }
+    .btn-primary-custom:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-icon { border: none; background: none; cursor: pointer; padding: 6px; border-radius: 4px; color: #64748b; }
+    .btn-icon.delete:hover { color: #ef4444; background: #fef2f2; }
+    .btn-icon.edit:hover { color: #2563eb; background: #eff6ff; }
+</style>
+
+<script>
+// We use the full list for the search/autopopulate features
+const trips_data = {{ trips_fast_lookup.values()|list|tojson }};
+const existing_orders = {{ fuel_logs|map(attribute='order_number')|list|tojson }};
+
+function showMonth(tabId, btn) {
+    document.querySelectorAll('.month-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
+    document.getElementById(tabId).style.display = 'block';
+    btn.classList.add('active-tab');
+    runFilters();
+}
+
+function showLoading(form) {
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+}
+
+async function submitForm() {
+    const form = document.getElementById('addFuelForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    // Save filters so they stay active after the save
+    sessionStorage.setItem('lastTruckFilter', document.getElementById('truckFilter').value);
+    sessionStorage.setItem('lastSearchFilter', document.getElementById('globalSearch').value);
+
+    const formData = new FormData(form);
+    try {
+        const res = await fetch("/fuel/add", { 
+            method: "POST", 
+            body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            // Smooth redirect back to fuel page
+            window.location.href = "/fuel";
+        } else if (data.is_duplicate) {
+            document.getElementById('duplicate_ui').style.display = 'block';
+            document.getElementById('add_force').value = 'true';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i>';
+            alert("Duplicate detected! Please provide a reason to save anyway.");
+        }
+    } catch (err) {
+        console.error(err);
+        window.location.reload();
+    }
+}
+
+function openEditModal(f) {
+    const orderSelect = document.getElementById('modal_order');
+    const unassignedGroup = document.getElementById('modal_unassigned_group');
+    
+    // 1. Reset the dropdown - remove any "temporary" options from previous edits
+    const tempOption = document.getElementById('temp_order_option');
+    if (tempOption) tempOption.remove();
+
+    // 2. Set the ID and basic fields
+    document.getElementById('modal_id').value = f.id;
+    document.getElementById('modal_date').value = f.date;
+    document.getElementById('modal_truck').value = f.truck_reg;
+    document.getElementById('modal_driver').value = f.driver;
+    document.getElementById('modal_litres').value = f.litres;
+    document.getElementById('modal_km').value = f.km_at_fuel;
+    document.getElementById('modal_cost').value = f.cost || (f.litres * 19.50).toFixed(2);
+
+    // 3. Handle the Order Number Selection
+    const currentOrder = String(f.order_number || "");
+    
+    if (!currentOrder || currentOrder === "Manual" || currentOrder === "CUSTOM") {
+        orderSelect.value = "CUSTOM";
+    } else {
+        // Check if the order exists in the current dropdown
+        let exists = Array.from(orderSelect.options).some(opt => opt.value === currentOrder);
+        
+        if (!exists) {
+            // If the order isn't in 'unassigned', it means it's ALREADY assigned to this log.
+            // We add it as a temporary option so the dropdown shows the correct value.
+            const newOpt = document.createElement('option');
+            newOpt.value = currentOrder;
+            newOpt.text = "#" + currentOrder + " (Current)";
+            newOpt.id = "temp_order_option";
+            unassignedGroup.appendChild(newOpt);
+        }
+        orderSelect.value = currentOrder;
+    }
+
+    document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+
+function updateCost(l, prefix) {
+    const field = document.getElementById(prefix + '_cost');
+    if (field) field.value = (parseFloat(l) * 19.50).toFixed(2);
+}
+
+function runFilters() {
+    const searchVal = document.getElementById('globalSearch').value.toLowerCase();
+    const truckVal = document.getElementById('truckFilter').value;
+    document.querySelectorAll('.fuel-row').forEach(row => {
+        const truckMatch = truckFilter.value === "" || row.getAttribute('data-truck') === truckVal;
+        const textMatch = row.innerText.toLowerCase().includes(searchVal);
+        row.style.display = (truckMatch && textMatch) ? "" : "none";
+    });
+}
+
+// Reuse your existing duplicate/autopopulate logic here...
+function checkDuplicate(orderNum) {
+    const ui = document.getElementById('duplicate_ui');
+    if (existing_orders.includes(orderNum)) {
+        ui.style.display = 'block';
+        document.getElementById('add_force').value = 'true';
+    } else {
+        ui.style.display = 'none';
+        document.getElementById('add_force').value = 'false';
+    }
+}
+function autoPopulate(val, prefix) {
+    const match = trips_data.find(t => String(t.order_number) === String(val));
+    if (match) {
+        document.getElementById(prefix + '_truck').value = match.truck_reg || match.truck || "";
+        document.getElementById(prefix + '_driver').value = match.driver || "";
+    }
+}
+
+// Run this when the page loads
+window.addEventListener('DOMContentLoaded', (event) => {
+    const savedTruck = sessionStorage.getItem('lastTruckFilter');
+    const savedSearch = sessionStorage.getItem('lastSearchFilter');
+
+    if (savedTruck) {
+        document.getElementById('truckFilter').value = savedTruck;
+    }
+    if (savedSearch) {
+        document.getElementById('globalSearch').value = savedSearch;
+    }
+
+    // If there were saved filters, trigger the visual filtering
+    if (savedTruck || savedSearch) {
+        runFilters();
+    }
+});
+
+function quickSelectTrip(orderNo) {
+    document.getElementById('add_order').value = orderNo;
+    autoPopulate(orderNo, 'add');
+    document.getElementById('add_order').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function forceAcceptTrip(orderNo) {
+    const reason = prompt("Enter reason for skipping fuel log (e.g. 'Local trip', 'Fueled at base'):");
+    if (!reason) return;
+
+    const res = await fetch("/trips/skip-fuel", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_number: orderNo, reason: reason })
+    });
+
+    if (res.ok) {
+        window.location.reload();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,1 @@
+breakdown_id,truck_reg,driver,location,issue_description,reported_date,reported_time,km_at_breakdown,status,repair_start_date,repair_end_date,downtime_hours,repair_cost,workshop,notes,mechanic,work_done,parts_issued,start_date,end_date

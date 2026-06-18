@@ -1,0 +1,832 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    :root {
+        --accent-blue: #2563eb;
+        --accent-green: #10b981;
+        --sky-blue-bg: #dbeafe; /* More pronounced operational blue */
+        --sky-blue-hover: #bae6fd;
+        --green-bg: #f0fdf4;
+        --green-hover: #dcfce7;
+        --dark-panel: #1e293b;
+    }
+
+    .dashboard-bg { 
+        background: radial-gradient(circle at top right, #e2e8f0, #f8fafc);
+        min-height: 100vh; padding: 30px;
+    }
+
+    /* Premium Operational Summary Ribbon Cards */
+    .metric-card {
+        background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; transition: transform 0.2s;
+    }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-card.active-ops { background-color: #f0f7ff; border-color: #bae6fd; }
+    .metric-card.completed-ops { background-color: var(--green-bg); border-color: #bbf7d0; }
+
+    /* SaaS Navigation Month Tabs */
+    .month-tabs {
+        display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 2px; overflow-x: auto;
+    }
+    .month-btn {
+        background: transparent; border: none; padding: 10px 24px; font-weight: 600; font-size: 0.9rem; color: #64748b; position: relative; white-space: nowrap; transition: color 0.2s;
+    }
+    .month-btn:hover { color: var(--accent-blue); }
+    .month-btn.active { color: var(--accent-blue); font-weight: 700; }
+    .month-btn.active::after {
+        content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 4px; background-color: var(--accent-blue); border-radius: 2px;
+    }
+
+    /* Data Table Console Setup */
+    .table-container {
+        background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e2e8f0;
+    }
+    .custom-table th {
+        background-color: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 16px; border-bottom: 1px solid #e2e8f0;
+    }
+    .custom-table td { padding: 16px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-size: 0.875rem; }
+    
+    /* Strict Color Communication: Primary Master Rows */
+    .master-trip-row { cursor: pointer; transition: background 0.15s; background-color: #ffffff; }
+    
+    .master-trip-row.in-transit-trip { background-color: var(--sky-blue-bg) !important; }
+    .master-trip-row.in-transit-trip:hover { background-color: var(--sky-blue-hover) !important; }
+    
+    .master-trip-row.delivered-trip { background-color: var(--green-bg) !important; }
+    .master-trip-row.delivered-trip:hover { background-color: var(--green-hover) !important; }
+
+    /* Sequence Map Blueprints */
+    .blueprint-container { padding: 16px 24px; border-bottom: 2px solid #e2e8f0; }
+    .blueprint-container.in-transit-zone { background: #fafcff; }
+    .blueprint-container.delivered-zone { background: #f9fdfa; }
+
+    /* Expanded Sequence Badges for Multi-Product Clarity */
+    .blueprint-badge {
+        background: white; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 18px; display: inline-flex; flex-direction: column; gap: 4px; font-size: 0.825rem; box-shadow: 0 2px 4px rgba(0,0,0,0.04); min-width: 240px; vertical-align: top;
+    }
+    .blueprint-badge.sky-blue-stop { border-color: #bae6fd; background-color: #f0f7ff; }
+    .blueprint-badge.green-stop { border-color: #bbf7d0; background-color: var(--green-bg); }
+
+    /* Restored Pill Badges */
+    .badge-in-transit { background-color: var(--accent-blue); color: white; }
+    .badge-delivered { background-color: var(--accent-green); color: white; }
+
+    /* Command Overlay Window Elements */
+    .command-center {
+        display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 9999; padding: 25px;
+    }
+    .command-box {
+        background: #f8fafc; width: 100%; max-width: 1400px; height: 92vh; margin: auto; border-radius: 24px; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .drop-card { background: white; border-radius: 14px; padding: 20px; border-left: 6px solid var(--accent-blue); margin-bottom: 15px; position: relative; }
+    .remove-drop { position: absolute; top: 15px; right: 15px; color: #ef4444; cursor: pointer; z-index: 10; }
+    .totalizer { background: var(--dark-panel); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+</style>
+
+<div class="dashboard-bg">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold text-dark m-0">Local Distribution Fleet</h1>
+            <p class="text-muted m-0 small">High-Flexibility Multi-Drop Operations Management</p>
+        </div>
+        <button class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="openCommandCenter('CREATE')">
+            <i class="fas fa-plus-circle me-2"></i>Build New Trip
+        </button>
+    </div>
+
+    {# 1. GROUP AND NORMALIZE MONTHS FOR TABS #}
+    {% set unique_trips = trips | groupby('trip_id') %}
+    {% set months_map = namespace(keys=[]) %}
+    
+    {% for group in unique_trips %}
+        {% set trip_date = group.list[0].date_loaded | string %}
+        
+        {% if '/' in trip_date %}
+            {% set parts = trip_date.split('/') %}
+            {% set yr_mo = (parts[2] ~ '-' ~ parts[1]) if parts[2]|length == 4 else (parts[0] ~ '-' ~ parts[1]) %}
+        {% elif '-' in trip_date %}
+            {% set parts = trip_date.split('-') %}
+            {% set yr_mo = (parts[2] ~ '-' ~ parts[1]) if parts[2]|length == 4 else (parts[0] ~ '-' ~ parts[1]) %}
+        {% else %}
+            {% set yr_mo = trip_date[0:7] %}
+        {% endif %}
+        
+        {% if yr_mo|length >= 7 and yr_mo not in months_map.keys %}
+            {% set months_map.keys = months_map.keys + [yr_mo] %}
+        {% endif %}
+    {% endfor %}
+    
+    {% set sorted_months = months_map.keys | sort(reverse=true) %}
+    {% if sorted_months | length == 0 %}
+        {% set sorted_months = ["2026-06"] %}
+    {% endif %}
+
+    <div class="month-tabs" id="monthTabsStrip">
+        {% for mo in sorted_months %}
+            <button class="month-btn {% if loop.first %}active{% endif %}" data-target-month="{{ mo }}" onclick="switchMonthTab('{{ mo }}')">
+                <i class="far fa-calendar-alt me-1"></i> {{ mo }} Logs
+            </button>
+        {% endfor %}
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="metric-card active-ops">
+                <small class="text-primary fw-bold text-uppercase tracking-wider d-block mb-1">Active (In Transit)</small>
+                <h3 class="fw-bold m-0 text-dark d-flex justify-content-between align-items-center" id="statActiveCount">
+                    0 <i class="fas fa-truck-moving text-primary opacity-50"></i>
+                </h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card completed-ops">
+                <small class="text-success fw-bold text-uppercase tracking-wider d-block mb-1">Completed Mileage (Month)</small>
+                <h3 class="fw-bold m-0 text-success d-flex justify-content-between align-items-center" id="statKmSum">
+                    0 Km <i class="fas fa-road text-success opacity-50"></i>
+                </h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card bg-white">
+                <small class="text-muted fw-bold text-uppercase tracking-wider d-block mb-1">Volume Transmitted (Delivered)</small>
+                <h3 class="fw-bold m-0 text-success d-flex justify-content-between align-items-center" id="statVolumeSum">
+                    0 L <i class="fas fa-gas-pump text-success opacity-50"></i>
+                </h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <small class="text-muted fw-bold text-uppercase tracking-wider d-block mb-1">Total Trips</small>
+                <h3 class="fw-bold m-0 text-dark d-flex justify-content-between align-items-center" id="statTotalTrips">
+                    0 <i class="fas fa-folder-open text-muted opacity-50"></i>
+                </h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+            <div class="input-group style-group" style="max-width: 350px;">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="tableSearch" class="form-control bg-light border-start-0" placeholder="Filter current view parameters..." onkeyup="filterDistributionTable()">
+            </div>
+            <small class="text-muted" id="entriesCounterLabel">Processing data entries...</small>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table custom-table m-0" id="tripsTable">
+                <thead>
+                    <tr>
+                        <th>Trip ID / PAT</th>
+                        <th>Loading Point & Date</th>
+                        <th>Vehicle / Trailer</th>
+                        <th>Driver Assignment</th>
+                        <th class="text-end">Odo Run Diff</th>
+                        <th class="text-end">Total Drops</th>
+                        <th class="text-end">Loaded & Offloaded Volumes</th>
+                        <th class="text-center">Overall Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# 2. MAP AND PRE-SORT TRIPS (DELIVERED ON TOP, IN TRANSIT AT BOTTOM) #}
+                    {% set processed_trips = [] %}
+                    {% for group in unique_trips %}
+                        {% set transit_flag = namespace(state=0) %}
+                        {% for s in group.list %}
+                            {% if s.status == 'IN TRANSIT' %}
+                                {% set transit_flag.state = 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set _ = processed_trips.append({'group_obj': group, 'sort_key': transit_flag.state}) %}
+                    {% endfor %}
+
+                    {% for item in processed_trips | sort(attribute='sort_key') %}
+                        {% set group = item.group_obj %}
+                        {% set stops = group.list %}
+                        {% set master = stops[0] %}
+                        {% set row_date = master.date_loaded | string %}
+                        
+                        {# MATCHING ROW NORMALIZATION ROUTINE #}
+                        {% if '/' in row_date %}
+                            {% set parts = row_date.split('/') %}
+                            {% set record_month = (parts[2] ~ '-' ~ parts[1]) if parts[2]|length == 4 else (parts[0] ~ '-' ~ parts[1]) %}
+                        {% elif '-' in row_date %}
+                            {% set parts = row_date.split('-') %}
+                            {% set record_month = (parts[2] ~ '-' ~ parts[1]) if parts[2]|length == 4 else (parts[0] ~ '-' ~ parts[1]) %}
+                        {% else %}
+                            {% set record_month = row_date[0:7] %}
+                        {% endif %}
+                        
+                        {% set trip_loaded = namespace(liters=0) %}
+                        {% set trip_offloaded = namespace(liters=0) %}
+                        {% set is_transit = namespace(state=false) %}
+                        
+                        {% for s in stops %}
+                            {% set trip_loaded.liters = trip_loaded.liters + s.litres_loaded|int %}
+                            {% set trip_offloaded.liters = trip_offloaded.liters + s.litres_offloaded|int %}
+                            {% if s.status == 'IN TRANSIT' %}
+                                {% set is_transit.state = true %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% set loading_km = master.loading_km|int if master.loading_km else 0 %}
+                        {% set closing_km = master.offloading_km|int if master.offloading_km else 0 %}
+                        {% set driven_km = (closing_km - loading_km) if closing_km > loading_km else 0 %}
+                        
+                        <tr class="master-trip-row {% if is_transit.state %}master-in-transit-row in-transit-trip{% else %}master-delivered-row delivered-trip{% endif %}" 
+                            data-month-tag="{{ record_month }}"
+                            data-is-transit="{{ 'YES' if is_transit.state else 'NO' }}"
+                            data-km-metric="{{ driven_km }}"
+                            data-vol-metric="{{ trip_offloaded.liters if not is_transit.state else 0 }}"
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#collapse_box_{{ master.trip_id }}" 
+                            aria-expanded="false">
+                            
+                            <td class="fw-bold font-monospace text-primary">{{ master.trip_id }}</td>
+                            <td>
+                                <div class="fw-bold text-dark"><i class="fas fa-map-marker-alt me-1 opacity-50"></i>{{ master.loading_point if master.loading_point else '---' }}</div>
+                                <span class="text-muted small d-block mt-0.5"><i class="far fa-calendar opacity-50 me-1"></i>{{ master.date_loaded }}</span>
+                            </td>
+                            <td class="fw-bold text-dark">
+                                <div><i class="fas fa-truck me-2 opacity-50"></i>{{ master.truck_reg }}</div>
+                                <span class="text-muted font-monospace x-small d-block mt-0.5" style="font-size: 0.8rem;">
+                                    Trailer: {{ master.trailer_reg if master.trailer_reg else '---' }}
+                                </span>
+                            </td>
+                            <td><i class="far fa-user me-2 text-muted"></i>{{ master.driver }}</td>
+                            
+                            <td class="text-end font-monospace fw-bold text-dark">
+                                {% if closing_km > 0 %}
+                                    <span>{{ "{:,}".format(driven_km) }} Km</span>
+                                {% else %}
+                                    <span class="text-muted small italic">Open ({{ "{:,}".format(loading_km) }} Km)</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="text-end fw-bold">
+                                <span class="badge bg-dark rounded-pill">{{ stops|length }} Drops</span>
+                            </td>
+                            <td class="text-end font-monospace">
+                                <div class="fw-bold text-primary">{{ "{:,}".format(trip_loaded.liters) }} L <small class="text-muted small">Ld</small></div>
+                                <span class="text-success fw-bold" style="font-size: 0.85rem;">
+                                    {% if not is_transit.state %}
+                                        {{ "{:,}".format(trip_offloaded.liters) }} L <small class="text-muted small">Off</small>
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td class="text-center" onclick="event.stopPropagation();">
+                                <span class="badge {% if is_transit.state %}badge-in-transit{% else %}badge-delivered{% endif %} rounded-pill text-uppercase px-3 py-2" style="font-weight: 700; font-size: 0.75rem; letter-spacing: 0.05em;">
+                                    {{ 'IN TRANSIT' if is_transit.state else 'DELIVERED' }}
+                                </span>
+                                <a href="#" class="text-muted ms-3 fs-6" title="Edit Manifest File" onclick="openCommandCenter('EDIT', '{{ master.trip_id }}')">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                        </tr>
+
+                        <tr class="searchable-blueprint-row collapse" id="collapse_box_{{ master.trip_id }}" data-month-child="{{ record_month }}" style="background-color: #fafafa;">
+                            <td colspan="8" class="p-0 border-bottom">
+                                <div class="blueprint-container {% if is_transit.state %}in-transit-zone{% else %}delivered-zone{% endif %} d-flex flex-wrap gap-2 align-items-center">
+                                    <small class="text-uppercase font-monospace text-muted fw-bold me-2"><i class="fas fa-route me-1"></i> Drops Sequence:</small>
+                                    
+                                    {% for s in stops %}
+                                        {% set stop_load = s.litres_loaded|int %}
+                                        {% set stop_offload = s.litres_offloaded|int %}
+                                        {% set item_variance = stop_offload - stop_load %}
+
+                                        <div class="blueprint-badge {% if s.status == 'IN TRANSIT' %}sky-blue-stop{% else %}green-stop{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-1">
+                                                <span class="fw-bold text-primary text-uppercase font-monospace" style="font-size:0.75rem;">
+                                                    <i class="fas fa-hashtag me-1"></i>{{ s.order_number if s.order_number else 'No Ord#' }}
+                                                </span>
+                                                <span class="small text-muted font-monospace" style="font-size:0.7rem;">
+                                                    <i class="far fa-calendar-check me-1"></i>{{ s.offloading_date if s.offloading_date else master.date_loaded }}
+                                                </span>
+                                            </div>
+
+                                            <div class="fw-bold text-dark text-truncate mb-1" style="max-width: 250px;">
+                                                {{ loop.index }}. {{ s.offloading_point }}
+                                            </div>
+
+                                            <div class="d-flex justify-content-between small">
+                                                <span class="text-secondary font-monospace">Ld: <b>{{ "{:,}".format(stop_load) }}L</b></span>
+                                                <span class="text-muted font-monospace">Off: <b>{{ "{:,}".format(stop_offload) if s.status == 'DELIVERED' else '---' }}</b></span>
+                                            </div>
+
+                                            <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top" style="font-size: 0.75rem;">
+                                                <span class="text-dark fw-bold font-monospace">
+                                                    {{ s.product }}
+                                                </span>
+                                                <span class="text-muted font-monospace text-uppercase small">
+                                                    WB: {{ s.dn_number if s.dn_number else 'PENDING' }}
+                                                </span>
+                                            </div>
+
+                                            <div class="text-end font-monospace mt-1" style="font-size:0.75rem;">
+                                                {% if s.status == 'DELIVERED' %}
+                                                    <span class="fw-bold {% if item_variance < 0 %}text-danger{% else %}text-success{% endif %}">
+                                                        Var: {{ '+' if item_variance > 0 }}{{ "{:,}".format(item_variance) }} L
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-primary fw-bold"><i class="fas fa-clock me-1"></i>In Route</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% if not loop.last %}
+                                            <i class="fas fa-long-arrow-alt-right text-muted mx-1 opacity-50"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    
+                    {% if unique_trips|length == 0 %}
+                    <tr id="emptyLedgerRow">
+                        <td colspan="8" class="text-center py-5 text-muted opacity-50">
+                            <i class="fas fa-box-open fa-2x d-block mb-2"></i>
+                            No active distribution parameters recorded in the database.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="commandCenter" class="command-center">
+    <div class="command-box shadow-lg">
+        
+        <div class="p-4 bg-white border-bottom d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-4 flex-wrap align-items-center">
+                <h5 class="fw-bold text-dark m-0 me-3" id="modalModeTitle">Secondary Trips</h5>
+                
+                <div>
+                    <label class="small fw-bold text-muted d-block">TRIP NUMBER (PAT)</label> 
+                    <input type="text" id="m_trip_id" class="form-control form-control-sm fw-bold text-primary font-monospace" placeholder="e.g. PAT-999" style="width:160px;">
+                </div>
+                
+                <div>
+                    <label class="small fw-bold text-muted d-block">VEHICLE MASTER</label>
+                    <select id="m_truck" class="form-select form-select-sm fw-bold text-primary" style="width:160px;" onchange="syncTrailer()">
+                        <option value="">Select Truck</option>
+                        {% for v in vehicles %}
+                        <option value="{{ v.truck_reg }}" data-trailer="{{ v.trailer_reg }}">{{ v.truck_reg }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="small fw-bold text-muted d-block">TRAILER AUTOFILL</label>
+                    <input type="text" id="trailer_input" class="form-control form-control-sm bg-light fw-bold text-muted" style="width:140px;" readonly placeholder="No Trailer">
+                </div>
+
+                <div>
+                    <label class="small fw-bold text-muted d-block">ASSIGNED DRIVER</label>
+                    <select id="m_driver" class="form-select form-select-sm fw-bold" style="width:200px;">
+                        <option value="">Select Driver</option>
+                        {% for d in drivers %}
+                        <option value="{{ d['NAME/SURNAME'] }}">{{ d['NAME/SURNAME'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="small fw-bold text-muted d-block">LOADING DATA</label>
+                    <div class="input-group input-group-sm">
+                        <input type="date" id="m_date" class="form-control fw-bold" style="width:135px;">
+                        <input type="text" id="m_loading_point" class="form-control" placeholder="Hub Point" value="WALTLOO" style="width:110px;">
+                        <input type="number" id="m_loading_km" class="form-control" placeholder="Start Km" style="width:90px;">
+                    </div>
+                </div>
+                
+                <div id="closingKmContainer" style="display:none;">
+                    <label class="small fw-bold text-danger d-block">TRIP CLOSING METRICS</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" id="m_offloading_km" class="form-control border-danger" placeholder="End Km" style="width:110px;" oninput="calculateKmVarianes()">
+                        <span class="input-group-text bg-light font-monospace small" id="lblKmVars">0 Km</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-close" onclick="closeCommandCenter()"></button>
+        </div>
+
+        <div class="flex-grow-1 overflow-auto p-4 bg-light" id="dropContainer">
+            <h5 class="fw-bold text-secondary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Stops & Drop Allocations</h5>
+        </div>
+
+        <div class="totalizer">
+            <div class="d-flex gap-5">
+                <div>
+                    <small class="d-block opacity-75 small uppercase font-weight-bold">Total Load Intended</small>
+                    <span class="fs-4 fw-bold font-monospace" id="totalVolDisplay">0 L</span>
+                </div>
+                <div>
+                    <small class="d-block opacity-75 small uppercase font-weight-bold">Stops Scheduled</small>
+                    <span class="fs-4 fw-bold font-monospace" id="stopCountDisplay">0</span>
+                </div>
+            </div>
+            <div class="d-flex gap-3 align-items-center">
+                <button class="btn btn-danger rounded-pill px-4" id="btnDeleteTrip" style="display:none;" onclick="deleteWholeTrip()">
+                    <i class="fas fa-trash me-2"></i>DELETE TRIP
+                </button>
+                <button class="btn btn-outline-light rounded-pill px-4" id="btnAddDrop" onclick="addDropRow()">
+                    <i class="fas fa-plus-circle me-2"></i>Add Drop Stop
+                </button>
+                <button class="btn btn-success rounded-pill px-5 fw-bold" onclick="commitTripManifest()">
+                    <i class="fas fa-shipping-fast me-2"></i>DISPATCH & SAVE MANIFEST
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let globalTripMode = "CREATE";
+    let activeSelectedMonth = "";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const firstTab = document.querySelector(".month-btn");
+        if(firstTab) {
+            const initialMonth = firstTab.getAttribute("data-target-month");
+            switchMonthTab(initialMonth);
+        }
+
+        const table = document.getElementById('tripsTable');
+        if (table) {
+            table.addEventListener('show.bs.collapse', function (e) {
+                const targetRow = e.target.closest('tr');
+                if (targetRow) targetRow.style.display = '';
+            });
+            table.addEventListener('hidden.bs.collapse', function (e) {
+                const targetRow = e.target.closest('tr');
+                if (targetRow) targetRow.style.display = 'none';
+            });
+        }
+    });
+
+    function switchMonthTab(targetMonth) {
+        activeSelectedMonth = targetMonth;
+        
+        document.querySelectorAll(".month-btn").forEach(btn => {
+            if(btn.getAttribute("data-target-month") === targetMonth) {
+                btn.classList.add("active");
+            } else {
+                btn.classList.remove("active");
+            }
+        });
+
+        document.getElementById("tableSearch").value = "";
+
+        let activeCount = 0;
+        let kmSum = 0;
+        let volumeSum = 0;
+        let totalTrips = 0;
+
+        const masterRows = document.querySelectorAll("#tripsTable tbody tr.master-trip-row");
+        
+        masterRows.forEach(row => {
+            const blueprintRow = row.nextElementSibling;
+            const rowMonth = row.getAttribute("data-month-tag");
+
+            if (rowMonth === targetMonth) {
+                row.style.display = "";
+                
+                if (!blueprintRow.classList.contains('show')) {
+                    blueprintRow.style.display = "none";
+                } else {
+                    blueprintRow.style.display = "";
+                }
+                
+                totalTrips++;
+                volumeSum += parseFloat(row.getAttribute("data-vol-metric") || 0);
+                kmSum += parseFloat(row.getAttribute("data-km-metric") || 0);
+                
+                if(row.getAttribute("data-is-transit") === "YES") {
+                    activeCount++;
+                }
+            } else {
+                row.style.display = "none";
+                blueprintRow.style.display = "none";
+                blueprintRow.classList.remove('show');
+            }
+        });
+
+        document.getElementById("statActiveCount").innerHTML = `${activeCount} <i class="fas fa-truck-moving text-primary opacity-50"></i>`;
+        document.getElementById("statKmSum").innerHTML = `${kmSum.toLocaleString()} Km <i class="fas fa-road text-success opacity-50"></i>`;
+        document.getElementById("statVolumeSum").innerHTML = `${volumeSum.toLocaleString()} L <i class="fas fa-gas-pump text-success opacity-50"></i>`;
+        document.getElementById("statTotalTrips").innerHTML = `${totalTrips} <i class="fas fa-folder-open text-muted opacity-50"></i>`;
+        
+        document.getElementById("entriesCounterLabel").innerText = `Showing ${totalTrips} manifests for ${targetMonth}`;
+    }
+
+    function filterDistributionTable() {
+        const input = document.getElementById("tableSearch").value.toUpperCase();
+        const masterRows = document.querySelectorAll("#tripsTable tbody tr.master-trip-row");
+        let matches = 0;
+
+        masterRows.forEach(row => {
+            const blueprintRow = row.nextElementSibling;
+            const rowMonth = row.getAttribute("data-month-tag");
+
+            if (rowMonth !== activeSelectedMonth) return;
+
+            const fullCombinedText = (row.textContent + blueprintRow.textContent).toUpperCase();
+            
+            if(fullCombinedText.includes(input)) {
+                row.style.display = "";
+                if (blueprintRow.classList.contains('show')) {
+                    blueprintRow.style.display = "";
+                }
+                matches++;
+            } else {
+                row.style.display = "none";
+                blueprintRow.style.display = "none";
+                blueprintRow.classList.remove('show');
+            }
+        });
+
+        document.getElementById("entriesCounterLabel").innerText = `Found ${matches} records matching filter criteria`;
+    }
+
+    function openCommandCenter(mode, tripId = null) {
+        globalTripMode = mode;
+        document.getElementById('commandCenter').style.display = 'flex';
+        document.getElementById('dropContainer').innerHTML = '<h5 class="fw-bold text-secondary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Stops & Drop Allocations</h5>';
+        
+        if (mode === "CREATE") {
+            document.getElementById('modalModeTitle').innerText = "Create New Trip";
+            document.getElementById('m_trip_id').value = "";
+            document.getElementById('m_trip_id').disabled = false;
+            document.getElementById('m_date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('m_truck').value = "";
+            document.getElementById('m_truck').disabled = false;
+            document.getElementById('trailer_input').value = "";
+            document.getElementById('m_driver').value = "";
+            document.getElementById('m_loading_point').value = "WALTLOO";
+            document.getElementById('m_loading_km').value = "";
+            document.getElementById('m_offloading_km').value = "";
+            document.getElementById('closingKmContainer').style.display = "none";
+            document.getElementById('btnDeleteTrip').style.display = "none";
+            document.getElementById('btnAddDrop').style.display = "inline-block";
+            
+            addDropRow();
+        } else {
+            document.getElementById('modalModeTitle').innerText = "Update Multi-Drop Execution";
+            document.getElementById('m_trip_id').disabled = true;
+            document.getElementById('m_truck').disabled = true;
+            document.getElementById('btnDeleteTrip').style.display = "inline-block";
+            
+            fetchTripStops(tripId);
+        }
+    }
+
+    function closeCommandCenter() { 
+        document.getElementById('commandCenter').style.display = 'none'; 
+    }
+
+    function syncTrailer() {
+        const tSel = document.getElementById('m_truck');
+        if(!tSel.selectedIndex) return;
+        const opt = tSel.options[tSel.selectedIndex];
+        document.getElementById('trailer_input').value = opt.getAttribute('data-trailer') || "";
+    }
+
+    function addDropRow(stopData = null) {
+        const container = document.getElementById('dropContainer');
+        const internalId = Date.now() + Math.random().toString(36).substr(2, 5);
+
+        const order = stopData?.order_number || '';
+        const dest = stopData?.offloading_point || '';
+        const prod = stopData?.product || 'ADO (Diesel)';
+        const litsLoad = stopData?.litres_loaded || 0;
+        const litsOff = stopData?.litres_offloaded || 0;
+        const dn = stopData?.dn_number || '';
+        const status = stopData?.status || 'IN TRANSIT';
+        const offDate = stopData?.offloading_date || new Date().toISOString().split('T')[0];
+
+        const rowHtml = `
+            <div class="drop-card shadow-sm border-0 mb-3" id="card_${internalId}">
+                <div class="remove-drop" onclick="removeDropCard('${internalId}')">
+                    <i class="fas fa-times-circle fa-lg"></i>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted">Order Number</label>
+                        <input type="text" class="form-control form-control-sm stop-order fw-bold text-primary font-monospace" value="${order}" placeholder="Order #">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small fw-bold text-muted">Destination / Customer Location</label>
+                        <input type="text" class="form-control form-control-sm stop-dest font-weight-bold" value="${dest}" placeholder="Drop point details">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted">Product Type</label>
+                        <select class="form-select form-select-sm stop-prod fw-bold">
+                            <option value="ULP 95" ${prod==='ULP 95'?'selected':''}>ULP 95</option>
+                            <option value="ADO (Diesel)" ${prod==='ADO (Diesel)'?'selected':''}>ADO (Diesel)</option>
+                            <option value="IK (Paraffin)" ${prod==='IK (Paraffin)'?'selected':''}>IK (Paraffin)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted">Loaded Liters</label>
+                        <input type="number" class="form-control form-control-sm stop-qty font-monospace fw-bold text-primary" value="${litsLoad}" oninput="calculateTotals()">
+                    </div>
+                    
+                    <div class="col-md-3 bg-light p-2 rounded-3 border-start border-3 border-danger">
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <label class="x-small fw-bold text-danger d-block">Offloaded Vol</label>
+                                <input type="number" class="form-control form-control-sm stop-offload font-monospace fw-bold" value="${litsOff}" oninput="calculateTotals()">
+                            </div>
+                            <div class="col-6">
+                                <label class="x-small fw-bold text-danger d-block">Waybill / DN</label>
+                                <input type="text" class="form-control form-control-sm stop-ref font-monospace" value="${dn}" placeholder="DN Number">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-2 d-flex justify-content-between align-items-center">
+                    <div class="d-flex gap-3 align-items-center">
+                        <div>
+                            <span class="small text-muted fw-bold">Status: </span>
+                            <select class="form-select form-select-sm d-inline-block w-auto stop-status py-0 font-weight-bold">
+                                <option value="IN TRANSIT" ${status==='IN TRANSIT'?'selected':''}>IN TRANSIT</option>
+                                <option value="DELIVERED" ${status==='DELIVERED'?'selected':''}>DELIVERED</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="small text-muted fw-bold">Offload Date: </span>
+                            <input type="date" class="form-control form-control-sm d-inline-block w-auto stop-date py-0" value="${offDate}">
+                        </div>
+                    </div>
+                    <div class="small font-monospace text-secondary fw-bold" id="variance_lbl_${internalId}">
+                        Var: ${(parseFloat(litsOff) - parseFloat(litsLoad))} L
+                    </div>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', rowHtml);
+        calculateTotals();
+    }
+
+    function removeDropCard(internalId) {
+        if(document.querySelectorAll('.drop-card').length === 1) {
+            alert("A distribution run must contain at least 1 destination stop point.");
+            return;
+        }
+        document.getElementById(`card_${internalId}`).remove();
+        calculateTotals();
+    }
+
+    function calculateTotals() {
+        const cards = document.querySelectorAll('.drop-card');
+        let totalLoaded = 0;
+        
+        cards.forEach(card => {
+            const loadInput = card.querySelector('.stop-qty').value || 0;
+            const offloadInput = card.querySelector('.stop-offload').value || 0;
+            totalLoaded += parseFloat(loadInput);
+            
+            const varLabel = card.querySelector('[id^="variance_lbl_"]');
+            if(varLabel) {
+                const diff = parseFloat(offloadInput) - parseFloat(loadInput);
+                varLabel.innerText = `Var: ${diff >= 0 ? '+' : ''}${diff.toLocaleString()} L`;
+                if(diff < 0) { varLabel.className = "small font-monospace text-danger fw-bold"; }
+                else if(diff > 0) { varLabel.className = "small font-monospace text-success fw-bold"; }
+                else { varLabel.className = "small font-monospace text-muted"; }
+            }
+        });
+
+        document.getElementById('totalVolDisplay').innerText = totalLoaded.toLocaleString() + ' L';
+        document.getElementById('stopCountDisplay').innerText = cards.length;
+        calculateKmVarianes();
+    }
+
+    function calculateKmVarianes() {
+        const sKm = parseFloat(document.getElementById('m_loading_km').value || 0);
+        const eKm = parseFloat(document.getElementById('m_offloading_km').value || 0);
+        const diff = eKm - sKm;
+        const display = document.getElementById('lblKmVars');
+        if(display) {
+            display.innerText = diff > 0 ? `${diff.toLocaleString()} Run Km` : `0 Km`;
+        }
+    }
+
+    async function fetchTripStops(tripId) {
+        try {
+            const res = await fetch(`/api/get_multi_drop_trip/${tripId}`);
+            if(!res.ok) throw new Error("Could not pull trip stops array data.");
+            const data = await res.json();
+            
+            document.getElementById('m_trip_id').value = data.header.trip_id;
+            document.getElementById('m_date').value = data.header.date_loaded;
+            document.getElementById('m_truck').value = data.header.truck_reg;
+            document.getElementById('trailer_input').value = data.header.trailer_reg;
+            document.getElementById('m_driver').value = data.header.driver;
+            document.getElementById('m_loading_point').value = data.header.loading_point;
+            document.getElementById('m_loading_km').value = data.header.loading_km;
+            document.getElementById('m_offloading_km').value = data.header.offloading_km || "";
+            
+            document.getElementById('closingKmContainer').style.display = "block";
+            
+            if(data.stops && data.stops.length > 0) {
+                let isDeliveredAll = data.stops.every(s => s.status === "DELIVERED");
+                document.getElementById('btnAddDrop').style.display = isDeliveredAll ? "none" : "inline-block";
+                
+                data.stops.forEach(stop => addDropRow(stop));
+            }
+            calculateTotals();
+        } catch (err) {
+            alert("Error loading stop entries: " + err.message);
+        }
+    }
+
+    async function commitTripManifest() {
+        const tripHeader = {
+            trip_id: document.getElementById('m_trip_id').value,
+            date_loaded: document.getElementById('m_date').value,
+            truck_reg: document.getElementById('m_truck').value,
+            trailer_reg: document.getElementById('trailer_input').value,
+            driver: document.getElementById('m_driver').value,
+            loading_point: document.getElementById('m_loading_point').value,
+            loading_km: document.getElementById('m_loading_km').value,
+            offloading_km: document.getElementById('m_offloading_km').value
+        };
+
+        if(!tripHeader.trip_id || !tripHeader.truck_reg || !tripHeader.driver || !tripHeader.date_loaded) {
+            return alert("Validation Failed: Trip ID (PAT #), Truck Master, Driver, and Loading Date are required inputs.");
+        }
+
+        const stops = [];
+        const dropCards = document.querySelectorAll('.drop-card');
+        
+        dropCards.forEach(card => {
+            stops.push({
+                order_number: card.querySelector('.stop-order').value,
+                offloading_point: card.querySelector('.stop-dest').value,
+                product: card.querySelector('.stop-prod').value,
+                litres_loaded: card.querySelector('.stop-qty').value,
+                litres_offloaded: card.querySelector('.stop-offload').value,
+                dn_number: card.querySelector('.stop-ref').value,
+                status: card.querySelector('.stop-status').value,
+                offloading_date: card.querySelector('.stop-date').value
+            });
+        });
+
+        const url = globalTripMode === "CREATE" ? '/api/save_multi_drop_trip' : '/api/update_multi_drop_trip';
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ header: tripHeader, stops: stops })
+            });
+
+            const responseText = await response.text();
+
+            if (response.ok) {
+                alert("Operation successful. Distribution dataset synchronized.");
+                location.reload(); 
+            } else {
+                let errorMsg = "Unknown server error.";
+                try {
+                    const data = JSON.parse(responseText);
+                    errorMsg = data.message || errorMsg;
+                } catch (e) {
+                    errorMsg = responseText || `Status Code: ${response.status}`;
+                }
+                alert(`Server Rejection (${response.status}): ` + errorMsg);
+            }
+        } catch (error) {
+            console.error("Transmission Error:", error);
+            alert("Failed to communicate with Python server. Error details: " + error.message);
+        }
+    }
+
+    async function deleteWholeTrip() {
+        const tripId = document.getElementById('m_trip_id').value;
+        if(!tripId) return;
+        
+        if(!confirm("Are you absolutely sure you want to completely erase this entire trip execution and all associated drop parameters? This cannot be undone.")) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/delete_multi_drop_trip/${tripId}`, { method: 'DELETE' });
+            if(res.ok) {
+                alert("Trip purged completely.");
+                location.reload();
+            } else {
+                alert("Failed to execute deletion protocol on server.");
+            }
+        } catch(e) {
+            alert("Error sending delete parameters downstream.");
+        }
+    }
+</script>
+
+{% endblock %}

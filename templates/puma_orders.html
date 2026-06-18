@@ -1,0 +1,453 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4 position-relative" style="min-height: 85vh; padding-bottom: 100px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-0 fw-bold text-dark">Puma Logistics Order Control Panel</h4>
+            <small class="text-muted">Operational Pipeline: Filtered Open Capacity vs. Deactivated Cancellations</small>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-warning text-dark px-3 py-2 border border-warning border-opacity-25 rounded-pill">
+                <i class="fas fa-clock me-1"></i> Open Live Stock
+            </span>
+            <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 border border-danger border-opacity-25 rounded-pill">
+                <i class="fas fa-ban me-1"></i> Cancelled Log Archive
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden border-top border-4 border-warning">
+                <div class="card-header bg-dark text-white p-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-folder-open text-warning me-2"></i>Open Pipeline Stock
+                    </h5>
+                    {% set open_count = orders | selectattr('status', 'equalto', 'OPEN') | list | length %}
+                    <span class="badge bg-warning text-dark px-2.5 py-1.5 fw-bold" id="openCountBadge">{{ open_count }} Active</span>
+                </div>
+                
+                <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0 sticky-header-table" id="openOrdersTable">
+                        <thead class="table-light text-uppercase fs-7 font-weight-bold">
+                            <tr>
+                                <th class="ps-3" width="10%">
+                                    <input class="form-check-input" type="checkbox" id="selectAllOpen" onchange="toggleSelectAllOpen(this)">
+                                </th>
+                                <th>Order Number</th>
+                                <th>Product</th>
+                                <th>Terminal</th>
+                                <th class="text-end pe-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if open_count > 0 %}
+                                {% for order in orders if order.status == 'OPEN' %}
+                                <tr id="row-{{ order.puma_order_number }}">
+                                    <td class="ps-3">
+                                        <input class="form-check-input order-checkbox open-cb" type="checkbox" value="{{ order.puma_order_number }}" onchange="evaluateCheckboxSelection()">
+                                    </td>
+                                    <td class="fw-bold text-mono target-ord-num">{{ order.puma_order_number }}</td>
+                                    <td class="target-product">
+                                        <span class="badge {% if order.product == 'ULP95' %}bg-primary{% else %}bg-secondary{% endif %} px-2">
+                                            {{ order.product }}
+                                        </span>
+                                    </td>
+                                    <td class="target-point"><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ order.loading_point }}</small></td>
+                                    <td class="text-end pe-3">
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-action-size shadow-xs" onclick="cancelSingleOrder('{{ order.puma_order_number }}')">
+                                            <i class="fas fa-times me-1"></i> Cancel
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr class="empty-placeholder-row">
+                                    <td colspan="5" class="text-center text-muted py-5">
+                                        <i class="fas fa-check-double text-success fa-2x d-block mb-2"></i> No active open orders available.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden border-top border-4 border-danger">
+                <div class="card-header bg-dark text-white p-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-ban text-danger me-2"></i>Cancelled Dashboard Archive
+                    </h5>
+                    {% set cancelled_count = orders | selectattr('status', 'equalto', 'CANCELLED') | list | length %}
+                    <span class="badge bg-danger px-2.5 py-1.5 fw-bold" id="cancelledCountBadge">{{ cancelled_count }} Voided</span>
+                </div>
+                
+                <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0 sticky-header-table" id="cancelledOrdersTable">
+                        <thead class="table-light text-uppercase fs-7 font-weight-bold">
+                            <tr>
+                                <th class="ps-3" width="10%">
+                                    <input class="form-check-input" type="checkbox" id="selectAllCancelled" onchange="toggleSelectAllCancelled(this)">
+                                </th>
+                                <th>Order Number</th>
+                                <th>Product</th>
+                                <th>Terminal</th>
+                                <th class="text-end pe-3">Action Flags</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cancelledTableBody">
+                            {% if cancelled_count > 0 %}
+                                {% for order in orders if order.status == 'CANCELLED' %}
+                                <tr id="row-{{ order.puma_order_number }}" class="order-deactivated bg-light bg-opacity-50">
+                                    <td class="ps-3">
+                                        <input class="form-check-input order-checkbox cancelled-cb animate-events" type="checkbox" value="{{ order.puma_order_number }}" onchange="evaluateCheckboxSelection()">
+                                    </td>
+                                    <td class="fw-bold text-mono text-decoration-line-through target-ord-num">{{ order.puma_order_number }}</td>
+                                    <td class="target-product">
+                                        <span class="badge bg-outline-muted text-muted border px-2">
+                                            {{ order.product }}
+                                        </span>
+                                    </td>
+                                    <td class="target-point"><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ order.loading_point }}</small></td>
+                                    <td class="text-end pe-3">
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-action-size shadow-xs animate-events" onclick="reactivateSingleOrder('{{ order.puma_order_number }}')">
+                                            <i class="fas fa-redo me-1"></i> Reactivate
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr class="empty-placeholder-row">
+                                    <td colspan="5" class="text-center text-muted py-5">
+                                        <i class="fas fa-clipboard-check text-muted fa-2x d-block mb-2"></i> No cancelled records to display.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="bulkActionFooter" class="card bg-dark text-white border-0 shadow-lg p-3 position-fixed bottom-0 start-50 translate-middle-x mb-4 w-75 rounded-3 d-none animate-slide-up" style="z-index: 1050;">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="p-2 bg-warning rounded text-dark me-3" id="bulkIconBox">
+                    <i class="fas fa-exclamation-triangle fa-lg"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-bold text-warning" id="bulkTitleText">Bulk Processing Workspace Active</h6>
+                    <small class="text-muted"><span id="selectedCountText" class="text-white fw-bold">0</span> allocations targeted.</small>
+                </div>
+            </div>
+            <div>
+                <button type="button" class="btn btn-outline-light me-2 btn-sm" onclick="clearAllSelections()">Clear Selection</button>
+                <button type="button" class="btn btn-sm px-4 fw-bold shadow-sm" id="bulkExecuteButton">
+                    Execute Bulk Action
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Master select checkbox control toggle for Open Side
+function toggleSelectAllOpen(masterCheckbox) {
+    if(masterCheckbox.checked) {
+        document.getElementById('selectAllCancelled').checked = false;
+        document.querySelectorAll('#cancelledOrdersTable tbody .cancelled-cb').forEach(cb => cb.checked = false);
+    }
+    const checkboxes = document.querySelectorAll('#openOrdersTable tbody .open-cb');
+    checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+    evaluateCheckboxSelection();
+}
+
+// Master select checkbox control toggle for Cancelled Side (FIXED FOR BULK SELECTION)
+function toggleSelectAllCancelled(masterCheckbox) {
+    if(masterCheckbox.checked) {
+        document.getElementById('selectAllOpen').checked = false;
+        document.querySelectorAll('#openOrdersTable tbody .open-cb').forEach(cb => cb.checked = false);
+    }
+    const checkboxes = document.querySelectorAll('#cancelledOrdersTable tbody .cancelled-cb');
+    checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+    evaluateCheckboxSelection();
+}
+
+// Determines Workspace modes (Cancellation vs Reactivation processing)
+function evaluateCheckboxSelection() {
+    const checkedOpen = document.querySelectorAll('#openOrdersTable tbody .open-cb:checked');
+    const checkedCancelled = document.querySelectorAll('#cancelledOrdersTable tbody .cancelled-cb:checked');
+    
+    const footer = document.getElementById('bulkActionFooter');
+    const countText = document.getElementById('selectedCountText');
+    const titleText = document.getElementById('bulkTitleText');
+    const iconBox = document.getElementById('bulkIconBox');
+    const execBtn = document.getElementById('bulkExecuteButton');
+
+    // Sync master checkboxes states
+    const totalOpen = document.querySelectorAll('#openOrdersTable tbody .open-cb');
+    const masterOpen = document.getElementById('selectAllOpen');
+    if(totalOpen.length > 0 && checkedOpen.length === totalOpen.length) {
+        masterOpen.checked = true; masterOpen.indeterminate = false;
+    } else {
+        masterOpen.checked = false; masterOpen.indeterminate = checkedOpen.length > 0;
+    }
+
+    const totalCancelled = document.querySelectorAll('#cancelledOrdersTable tbody .cancelled-cb');
+    const masterCancelled = document.getElementById('selectAllCancelled');
+    if(totalCancelled.length > 0 && checkedCancelled.length === totalCancelled.length) {
+        masterCancelled.checked = true; masterCancelled.indeterminate = false;
+    } else {
+        masterCancelled.checked = false; masterCancelled.indeterminate = checkedCancelled.length > 0;
+    }
+
+    if (checkedOpen.length > 0) {
+        countText.innerText = checkedOpen.length;
+        titleText.innerText = "Bulk Deactivation Workspace Active";
+        titleText.className = "mb-0 fw-bold text-danger";
+        iconBox.className = "p-2 bg-danger rounded text-white me-3";
+        execBtn.className = "btn btn-danger btn-sm px-4 fw-bold shadow-sm";
+        execBtn.innerHTML = '<i class="fas fa-ban me-1"></i> Permanent Deactivate Selected';
+        execBtn.onclick = executeBulkCancellation;
+        footer.classList.remove('d-none');
+    } else if (checkedCancelled.length > 0) {
+        countText.innerText = checkedCancelled.length;
+        titleText.innerText = "Bulk Reactivation Workspace Active";
+        titleText.className = "mb-0 fw-bold text-success";
+        iconBox.className = "p-2 bg-success rounded text-white me-3";
+        execBtn.className = "btn btn-success btn-sm px-4 fw-bold shadow-sm";
+        execBtn.innerHTML = '<i class="fas fa-redo me-1"></i> Reactivate Selected';
+        execBtn.onclick = executeBulkReactivation;
+        footer.classList.remove('d-none');
+    } else {
+        footer.classList.add('d-none');
+    }
+}
+
+function clearAllSelections() {
+    document.querySelectorAll('.order-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('selectAllOpen').checked = false;
+    document.getElementById('selectAllOpen').indeterminate = false;
+    document.getElementById('selectAllCancelled').checked = false;
+    document.getElementById('selectAllCancelled').indeterminate = false;
+    evaluateCheckboxSelection();
+}
+
+// Single Action Trigger (Open -> Cancelled)
+function cancelSingleOrder(orderNum) {
+    if (confirm("Are you sure you want to deactivate order number: " + orderNum + "?")) {
+        postCancellationPayload([orderNum]);
+    }
+}
+
+// Single Action Trigger (Cancelled -> Open)
+function reactivateSingleOrder(orderNum) {
+    if (confirm("Are you sure you want to reactivate order number: " + orderNum + "?")) {
+        postReactivationPayload([orderNum]);
+    }
+}
+
+// Mass Action Trigger (Open -> Cancelled)
+function executeBulkCancellation() {
+    const checkedBoxes = document.querySelectorAll('.open-cb:checked');
+    const idsToCancel = Array.from(checkedBoxes).map(cb => cb.value);
+    if (confirm("Confirm bulk processing to drop " + idsToCancel.length + " selected order allocations?")) {
+        postCancellationPayload(idsToCancel);
+    }
+}
+
+// Mass Action Trigger (Cancelled -> Open)
+function executeBulkReactivation() {
+    const checkedBoxes = document.querySelectorAll('.cancelled-cb:checked');
+    const idsToReactivate = Array.from(checkedBoxes).map(cb => cb.value);
+    if (confirm("Confirm bulk processing to restore " + idsToReactivate.length + " selected order allocations back to live workflow?")) {
+        postReactivationPayload(idsToReactivate);
+    }
+}
+
+// Network Client Post: CANCELLATIONS
+function postCancellationPayload(orderNumbersArray) {
+    fetch('/api/cancel-puma-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_numbers: orderNumbersArray })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Processing payload rejected.");
+        return res.json();
+    })
+    .then(data => {
+        if (data.status === 'Success') {
+            orderNumbersArray.forEach(orderNum => transitionRowVisualElement(orderNum, 'TO_CANCELLED'));
+            clearAllSelections();
+            recalculateHeaderCountsBadgeMetrics();
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("An operational failure occurred updating the database down line.");
+    });
+}
+
+// Network Client Post: REACTIVATIONS
+function postReactivationPayload(orderNumbersArray) {
+    fetch('/api/reactivate-puma-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_numbers: orderNumbersArray })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Processing payload rejected.");
+        return res.json();
+    })
+    .then(data => {
+        if (data.status === 'Success') {
+            orderNumbersArray.forEach(orderNum => transitionRowVisualElement(orderNum, 'TO_OPEN'));
+            clearAllSelections();
+            recalculateHeaderCountsBadgeMetrics();
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("An operational failure occurred updating the database down line.");
+    });
+}
+
+function transitionRowVisualElement(orderNum, direction) {
+    const targetRow = document.getElementById('row-' + orderNum);
+    if (!targetRow) return;
+
+    const rawProductText = targetRow.querySelector('.target-product').innerText.trim();
+    const rawPointHTML = targetRow.querySelector('.target-point').innerHTML;
+
+    if (direction === 'TO_CANCELLED') {
+        const cancelledBody = document.getElementById('cancelledTableBody');
+        const emptyRowRight = cancelledBody.querySelector('.empty-placeholder-row');
+        if (emptyRowRight) emptyRowRight.remove();
+
+        const newRow = document.createElement('tr');
+        newRow.id = 'row-' + orderNum;
+        newRow.className = "order-deactivated bg-light bg-opacity-50";
+        newRow.innerHTML = `
+            <td class="ps-3">
+                <input class="form-check-input order-checkbox cancelled-cb animate-events" type="checkbox" value="${orderNum}" onchange="evaluateCheckboxSelection()">
+            </td>
+            <td class="fw-bold text-mono text-decoration-line-through target-ord-num">${orderNum}</td>
+            <td class="target-product"><span class="badge bg-outline-muted text-muted border px-2">${rawProductText}</span></td>
+            <td class="target-point">${rawPointHTML}</td>
+            <td class="text-end pe-3">
+                <button type="button" class="btn btn-sm btn-outline-success btn-action-size shadow-xs animate-events" onclick="reactivateSingleOrder('${orderNum}')">
+                    <i class="fas fa-redo me-1"></i> Reactivate
+                </button>
+            </td>
+        `;
+        cancelledBody.appendChild(newRow);
+    } else if (direction === 'TO_OPEN') {
+        const openBody = document.querySelector('#openOrdersTable tbody');
+        const emptyRowLeft = openBody.querySelector('.empty-placeholder-row');
+        if (emptyRowLeft) emptyRowLeft.remove();
+
+        const badgeClass = (rawProductText === 'ULP95') ? 'bg-primary' : 'bg-secondary';
+
+        const newRow = document.createElement('tr');
+        newRow.id = 'row-' + orderNum;
+        newRow.innerHTML = `
+            <td class="ps-3">
+                <input class="form-check-input order-checkbox open-cb" type="checkbox" value="${orderNum}" onchange="evaluateCheckboxSelection()">
+            </td>
+            <td class="fw-bold text-mono target-ord-num">${orderNum}</td>
+            <td class="target-product"><span class="badge ${badgeClass} px-2">${rawProductText}</span></td>
+            <td class="target-point">${rawPointHTML}</td>
+            <td class="text-end pe-3">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-action-size shadow-xs" onclick="cancelSingleOrder('${orderNum}')">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+            </td>
+        `;
+        openBody.appendChild(newRow);
+    }
+    targetRow.remove();
+}
+
+function recalculateHeaderCountsBadgeMetrics() {
+    const openRows = document.querySelectorAll('#openOrdersTable tbody tr:not(.empty-placeholder-row)');
+    const cancelledRows = document.querySelectorAll('#cancelledOrdersTable tbody tr:not(.empty-placeholder-row)');
+    
+    document.getElementById('openCountBadge').innerText = openRows.length + " Active";
+    document.getElementById('cancelledCountBadge').innerText = cancelledRows.length + " Voided";
+
+    if (openRows.length === 0) {
+        document.querySelector('#openOrdersTable tbody').innerHTML = `
+            <tr class="empty-placeholder-row">
+                <td colspan="5" class="text-center text-muted py-5">
+                    <i class="fas fa-check-double text-success fa-2x d-block mb-2"></i> No active open orders available.
+                </td>
+            </tr>`;
+    }
+    if (cancelledRows.length === 0) {
+        document.getElementById('cancelledTableBody').innerHTML = `
+            <tr class="empty-placeholder-row">
+                <td colspan="5" class="text-center text-muted py-5">
+                    <i class="fas fa-clipboard-check text-muted fa-2x d-block mb-2"></i> No cancelled records to display.
+                </td>
+            </tr>`;
+    }
+}
+</script>
+
+<style>
+.text-mono {
+    font-family: 'SFMono-Regular', Consolas, "Liberation Mono", Menlo, monospace;
+    letter-spacing: -0.02em;
+}
+.fs-7 {
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+}
+.btn-action-size {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
+}
+.shadow-xs {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Base styles for the deactivated layout items on the right side card column */
+.order-deactivated td {
+    color: #8c939b !important;
+}
+.order-deactivated .target-ord-num {
+    opacity: 0.65;
+}
+
+/* Standard click events override for reactive actionable elements */
+.animate-events {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* Header sticky pinning lock-down rules */
+.sticky-header-table th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 2;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.08);
+}
+
+/* Smooth sliding animations context for multi processing modal footers */
+.animate-slide-up {
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes slideUp {
+    from { transform: translate(-50%, 100%); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+</style>
+{% endblock %}

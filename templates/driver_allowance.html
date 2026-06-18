@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2><strong>Available for Request</strong></h2>
+    <form action="/driver/request_allowance" method="POST">
+        <button type="submit" class="btn btn-success">📩 Request Food Allowance (Email CSV)</button>
+    </form>
+
+    <table class="table mt-3">
+        <thead class="thead-dark">
+            <tr>
+                <th>Driver</th>
+                <th>Date</th>
+                <th>Route</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in pending %}
+            <tr>
+                <td>{{ item.driver }}</td>
+                <td>{{ item.date_loaded }}</td>
+                <td>{{ item.loading_point }} → {{ item.offloading_point }}</td>
+                <td>R {{ "{:,.2f}".format(item.food_allowance | float) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr style="margin: 50px 0;">
+        <div class="mt-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2><strong>Requested / Awaiting Payment</strong></h2>
+                
+                {% if requested %}
+                <form action="/driver/mark_all_paid" method="POST" class="form-inline bg-light p-2 border rounded">
+                    <input type="text" name="batch_ref" class="form-control form-control-sm mr-2" 
+                        placeholder="Batch Ref (e.g. EFT_13Feb)" required>
+                    <button type="submit" class="btn btn-primary btn-sm" 
+                            onclick="return confirm('Confirm ALL requested loads as paid?')">
+                        💰 Mark ALL Paid
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+
+            <table class="table table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Driver</th>
+                        <th>Route</th>
+                        <th>Amount</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in requested %}
+                    <tr>
+                        <td>{{ item.driver }}</td>
+                        <td>{{ item.loading_point }} → {{ item.offloading_point }}</td>
+                        <td><strong>R {{ "{:,.2f}".format(item.food_allowance | float) }}</strong></td>
+                        <td>
+                            <form action="/driver/mark_single_paid/{{ item.original_index | int }}" method="POST" class="form-inline">
+                                <input type="text" name="payment_ref" class="form-control form-control-sm mr-1" 
+                                    placeholder="Ref #" required style="width: 100px;">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Pay</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+</div>
+{% endblock %}

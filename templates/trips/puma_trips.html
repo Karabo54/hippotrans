@@ -1,0 +1,799 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    :root {
+        --sky-blue: #0284c7;
+        --sky-blue-hover: #0369a1;
+        --sky-blue-light: #e0f2fe;
+    }
+    .text-xs { font-size: 0.72rem; }
+    .text-orange { color: #fd7e14; }
+    .card { border-radius: 10px; }
+    .form-control-sm { border-radius: 6px; font-size: 0.8rem; }
+
+    /* Pill Badge Styling */
+    .badge-pill-custom {
+        padding: 3px 10px;
+        border-radius: 30px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: inline-block;
+        white-space: nowrap;
+    }
+    .badge-product { background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+    .badge-status-transit { background-color: #e3f2fd; color: #084298; }
+    .badge-status-delivered { background-color: #d1e7dd; color: #0f5132; }
+    .badge-status-invoiced { background-color: #e2d9f3; color: #512da8; }
+    .badge-status-hold { background-color: #f8d7da; color: #842029; }
+    .badge-status-enroute { background-color: #fff3cd; color: #664d03; }
+    .badge-status-cancelled { background-color: #f8fafc; color: #64748b; }
+
+    /* Month Navigation Tabs */
+    .month-tabs-container {
+        display: flex;
+        gap: 0.4rem;
+        border-bottom: 2px solid #cbd5e1;
+        margin-bottom: 1.5rem;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    .month-tab-btn {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-bottom: none;
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #475569;
+        cursor: pointer;
+        border-radius: 6px 6px 0 0;
+        transition: all 0.15s ease;
+        margin-bottom: -2px;
+    }
+    .month-tab-btn:hover { background: #e2e8f0; color: var(--sky-blue); }
+    .month-tab-btn.active {
+        background: var(--sky-blue);
+        color: #ffffff !important;
+        border-color: var(--sky-blue);
+    }
+
+    /* Sub Status Navigation Tabs */
+    .custom-tabs-container {
+        display: flex;
+        gap: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 1rem;
+        padding-bottom: 1px;
+    }
+    .tab-btn {
+        background: none;
+        border: none;
+        padding: 8px 16px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+    }
+    .tab-btn:hover { color: var(--sky-blue); }
+    .tab-btn.active {
+        color: var(--sky-blue);
+        border-bottom-color: var(--sky-blue);
+    }
+
+    /* Screen Fit Fix: Double Wrappers for Clean Scrollboxes */
+    .table-responsive-container {
+        width: 100%;
+        overflow-x: auto;
+        background: #ffffff;
+    }
+    .scrollable-table-wrapper {
+        max-height: 640px;
+        overflow-y: auto;
+    }
+    .roster-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.8rem;
+    }
+    .roster-table th {
+        position: sticky;
+        top: 0;
+        background-color: var(--sky-blue) !important;
+        color: #ffffff !important;
+        padding: 10px 12px;
+        z-index: 10;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        border: none;
+        white-space: nowrap;
+    }
+    
+    /* System Row Coloring Adjustments */
+    .roster-table tbody tr { cursor: pointer; transition: all 0.1s ease; }
+    .roster-table tbody tr.row-cancelled td   { background-color: #f8f9fa !important; color: #6c757d !important; }
+    .roster-table tbody tr.row-invoiced td    { background-color: #f3e8ff !important; color: #512da8 !important; }
+    .roster-table tbody tr.row-delivered td   { background-color: #f0fdf4 !important; color: #0f5132 !important; }
+    .roster-table tbody tr.row-no-date td     { background-color: #fffde7 !important; color: #664d03 !important; }
+    .roster-table tbody tr.row-border-hold td { background-color: #fff5f5 !important; color: #842029 !important; }
+    .roster-table tbody tr.row-in-transit td  { background-color: #f0f9ff !important; color: #084298 !important; }
+
+    .roster-table tbody tr:hover td {
+        background-color: #d0e7ff !important;
+        color: #000000 !important;
+    }
+    .roster-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    
+    /* Monthly Content Blocks Toggle */
+    .month-content-group { display: none; }
+    .month-content-group.active { display: block; }
+</style>
+
+<div class="container-fluid py-4 bg-light">
+    
+    <div class="month-tabs-container">
+        {% set unique_months = namespace(list=[]) %}
+        
+        {% if monthly_kpis %}
+            {% for month_key in monthly_kpis.keys() | sort %}
+                {% set unique_months.list = unique_months.list + [month_key] %}
+            {% endfor %}
+        {% else %}
+            {% set unique_months.list = ['2026-06'] %}
+        {% endif %}
+
+        {% for month_code in unique_months.list %}
+            <button class="month-tab-btn" data-month-id="{{ month_code }}" data-month-target="{{ month_code }}" onclick="switchMonth('{{ month_code }}', this)">
+                <i class="far fa-calendar-alt mr-1"></i> {{ month_code }}
+            </button>
+        {% endfor %}
+    </div>
+
+    <div class="row align-items-center mb-4">
+        <div class="col-md-5">
+            <div class="input-group shadow-sm">
+                <div class="input-group-prepend">
+                    <span class="input-group-text bg-white border-right-0 text-muted"><i class="fas fa-search"></i></span>
+                </div>
+                <input type="text" id="tableSearch" class="form-control border-left-0" placeholder="Search loads by driver, vehicle, order numbers, status...">
+            </div>
+        </div>
+        <div class="col-md-7 text-right mt-2 mt-md-0">
+            <button type="button" class="btn btn-primary shadow-sm btn-sm px-3" data-toggle="modal" data-target="#pumaTripModal">
+                <i class="fas fa-plus-circle mr-2"></i> Create New Puma Load
+            </button>
+        </div>
+    </div>
+
+    {# --- GENERATE SEPARATE DATA SEGMENTS PER MONTH --- #}
+    {% for month_code in unique_months.list %}
+    <div id="panel-{{ month_code }}" class="month-content-group" data-month-code="{{ month_code }}">
+        
+        <div class="row mb-4">
+            {% set month_metrics = monthly_kpis[month_code] if (monthly_kpis and month_code in monthly_kpis) else {'total_km': 0, 'delivered_vol': 0} %}
+            
+            {% set month_planned = namespace(count=0) %}
+            {% set month_loaded = namespace(count=0) %}
+            
+            {% for trip in trips %}
+                {% set trip_date = trip.loading_date if (trip.loading_date and trip.loading_date != '---') else (trip.order_release_date if (trip.order_release_date and trip.order_release_date != '---') else none) %}
+                
+                {# Enroute orders (with no loading date) now securely target the current dashboard runtime month (2026-06) #}
+                {% if (trip_date and month_code in trip_date.replace('/', '-')) or (not trip_date and month_code == '2026-06') %}
+                    {% if trip.status|upper == 'PLANNED' or trip.status|upper == 'OPEN' %}
+                        {% set month_planned.count = month_planned.count + 1 %}
+                    {% else %}
+                        {% set month_loaded.count = month_loaded.count + 1 %}
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <small class="text-uppercase font-weight-bold text-muted small">Open Orders ({{ month_code }})</small>
+                    <h3 class="text-primary font-weight-bold mb-0 mt-1">{{ month_planned.count }}</h3>
+                    <span class="text-xs text-muted">Planned Loads</span>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <small class="text-uppercase font-weight-bold text-muted small">Actual Loaded ({{ month_code }})</small>
+                    <h3 class="text-success font-weight-bold mb-0 mt-1">{{ month_loaded.count }}</h3>
+                    <span class="text-xs text-success">Dispatched Loads</span>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <small class="text-uppercase font-weight-bold text-muted small">Total Distance ({{ month_code }})</small>
+                    <h3 class="text-dark font-weight-bold mb-0 mt-1" style="color: #0284c7 !important;">{{ "{:,}".format(month_metrics.total_km|int) }} Km</h3>
+                    <span class="text-xs text-muted">Running Distance</span>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <small class="text-uppercase font-weight-bold text-muted small">Delivered Vol ({{ month_code }})</small>
+                    <h3 class="text-success font-weight-bold mb-0 mt-1">{{ "{:,}".format(month_metrics.delivered_vol|int) }}L</h3>
+                    <span class="text-xs text-muted">Volume Handled</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="custom-tabs-container">
+            <button class="tab-btn active" data-filter="all" onclick="filterTab('all', this, '{{ month_code }}')">All Loads</button>
+            <button class="tab-btn" data-filter="active" onclick="filterTab('active', this, '{{ month_code }}')">Active In-Transit</button>
+            <button class="tab-btn" data-filter="completed" onclick="filterTab('completed', this, '{{ month_code }}')">Delivered & Invoiced</button>
+            <button class="tab-btn" data-filter="cancelled" onclick="filterTab('cancelled', this, '{{ month_code }}')">Cancelled</button>
+        </div>
+
+        <div class="card border-0 shadow-sm overflow-hidden">
+            <div class="table-responsive-container">
+                <div class="scrollable-table-wrapper">
+                    <table class="roster-table trackingTableMaster" id="table-{{ month_code }}">
+                        <thead>
+                            <tr>
+                                <th>Dates (L/O)</th>
+                                <th>Driver & Vehicle</th>
+                                <th>Order Details</th>
+                                <th>Product</th>
+                                <th>Slot</th>
+                                <th>Position</th>
+                                <th>Border Status</th>
+                                <th>Offloading Site</th>
+                                <th>Volumes (L)</th>
+                                <th>Loss/Gain</th>
+                                <th>Status</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set month_trips_count = namespace(value=0) %}
+
+                            {% for trip in trips %}
+                                {% set trip_date = trip.loading_date if (trip.loading_date and trip.loading_date != '---') else (trip.order_release_date if (trip.order_release_date and trip.order_release_date != '---') else none) %}
+                                
+                                {# Evaluates matching calendar months or assigns loose 'Enroute' records strictly into current system June dashboard #}
+                                {% if (trip_date and month_code in trip_date.replace('/', '-')) or (not trip_date and month_code == '2026-06') %}
+                                    {% set month_trips_count.value = month_trips_count.value + 1 %}
+                                    
+                                    {% set border_1_held = trip.arrival_border_1 and not trip.departure_border_1 %}
+                                    {% set border_2_held = trip.arrival_border_2 and not trip.departure_border_2 %}
+                                    {% set active_border_hold = border_1_held or border_2_held %}
+                                    {% set current_status = trip.status|upper if trip.status else 'IN-TRANSIT' %}
+
+                                    {% if current_status == 'CANCELLED' %}
+                                        {% set row_class = "row-cancelled" %}
+                                        {% set category_tab = "cancelled" %}
+                                        {% set status_pill = "badge-status-cancelled" %}
+                                        {% set friendly_status = "CANCELLED" %}
+                                    {% elif current_status == 'INVOICED' or trip.invoiced == 'Y' %}
+                                        {% set row_class = "row-invoiced" %}
+                                        {% set category_tab = "completed" %}
+                                        {% set status_pill = "badge-status-invoiced" %}
+                                        {% set friendly_status = "INVOICED" %}
+                                    {% elif current_status == 'DELIVERED' or trip.pod_submitted == 'Y' %}
+                                        {% set row_class = "row-delivered" %}
+                                        {% set category_tab = "completed" %}
+                                        {% set status_pill = "badge-status-delivered" %}
+                                        {% set friendly_status = "DELIVERED" %}
+                                    {% elif not trip.loading_date or trip.loading_date == '' or trip.loading_date == '---' or current_status == 'ENROUTE' %}
+                                        {% set row_class = "row-no-date" %}
+                                        {% set category_tab = "active" %}
+                                        {% set status_pill = "badge-status-enroute" %}
+                                        {% set friendly_status = "ENROUTE" %}
+                                    {% elif current_status == 'BORDER HOLD' or active_border_hold %}
+                                        {% set row_class = "row-border-hold" %}
+                                        {% set category_tab = "active" %}
+                                        {% set status_pill = "badge-status-hold" %}
+                                        {% set friendly_status = "BORDER HOLD" %}
+                                    {% else %}
+                                        {% set row_class = "row-in-transit" %}
+                                        {% set category_tab = "active" %}
+                                        {% set status_pill = "badge-status-transit" %}
+                                        {% set friendly_status = current_status %}
+                                    {% endif %}
+
+                                    <tr onclick='openEditModal({{ trip | tojson | safe }})' class="{{ row_class }}" data-tab-category="{{ category_tab }}">
+                                        <td>
+                                            <div class="text-xs"><strong>L:</strong> {{ trip.loading_date if trip.loading_date else '---' }}</div>
+                                            <div class="text-xs mt-1"><strong>O:</strong> {{ trip.offload_date if trip.offload_date else '---' }}</div>
+                                        </td>
+                                        <td>
+                                            <strong>{{ trip.driver_name }}</strong><br>
+                                            <span class="text-xs text-muted">{{ trip.truck_reg }} / {{trip.trailer_reg}}</span>
+                                        </td>
+                                        <td>
+                                            <span class="d-block font-weight-bold text-xs">LO: {{ trip.puma_order_number }}</span>
+                                            <span class="text-xs text-muted">PO: {{ trip.purchase_order_number }}</span>
+                                            <span class="d-block text-xs text-orange">SO: {{ trip.supplier_order_number }}</span>
+                                        </td>
+                                        <td><span class="badge-pill-custom badge-product">{{ trip.product }}</span></td>
+                                        <td>
+                                            <span class="font-weight-bold text-xs">{{ trip.slot_booked }}</span><br>
+                                            <span class="text-xs text-muted">#{{ trip.slot_number }}</span>
+                                        </td>
+                                        <td><span class="font-weight-bold text-xs">{{ trip.current_position if trip.current_position else '---' }}</span></td>
+                                        <td>
+                                            <div class="text-xs">
+                                                B1: <span class="{% if trip.departure_border_1 %}text-success{% elif trip.arrival_border_1 %}text-danger{% else %}text-muted{% endif %} font-weight-bold">{% if trip.departure_border_1 %}Cleared{% elif trip.arrival_border_1 %}Hld{% else %}Pending...{% endif %}</span> <br>
+                                                B2: <span class="{% if trip.departure_border_2 %}text-success{% elif trip.arrival_border_2 %}text-danger{% else %}text-muted{% endif %} font-weight-bold">{% if trip.departure_border_2 %}Cleared{% elif trip.arrival_border_2 %}Hld{% else %}Pending...{% endif %}</span>
+                                            </div>
+                                        </td>
+                                        <td><div class="text-xs font-weight-bold text-truncate" style="max-width:200px;">{{ trip.discharge_point }}</div></td>
+                                        <td>
+                                            <span class="text-xs">L: {{ "{:,}".format(trip.loaded_lits|int) if trip.loaded_lits else '0' }}</span><br>
+                                            <span class="text-xs">O: {{ "{:,}".format(trip.offloaded_lits|int) if trip.offloaded_lits else '0' }}</span>
+                                        </td>
+                                        <td>
+                                            {% set var = (trip.offloaded_lits|int - trip.loaded_lits|int) if (trip.offloaded_lits and trip.loaded_lits) else 0 %}
+                                            <span class="{% if var < 0 %}text-danger{% else %}text-success{% endif %} font-weight-bold text-xs">
+                                                {{ "+" if var > 0 }}{{ var }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge-pill-custom {{ status_pill }}">{{ friendly_status }}</span>
+                                        </td>
+                                        <td class="text-center" onclick="event.stopPropagation();">
+                                            <div class="d-flex justify-content-center align-items-center">
+                                                <a href="/generate-loading-advice/{{ trip.puma_order_number }}" class="btn btn-sm p-1 text-danger mr-1" title="Download PDF">
+                                                    <i class="fas fa-file-pdf fa-lg"></i>
+                                                </a>
+                                                <form action="/delete-puma-order/{{ trip.puma_order_number }}" method="POST" onsubmit="return confirm('Are you sure you want to remove or unassign this load?');" style="display:inline;">
+                                                    <button type="submit" class="btn btn-sm p-1 text-muted hover-danger" title="Remove Assignment">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if month_trips_count.value == 0 %}
+                                <tr class="no-records-fallback">
+                                    <td colspan="12" class="text-center text-muted py-4">No data matches for this month filter index.</td>
+                                </tr>
+                            {% endif %}
+                            
+                            <tr class="search-fallback-row" style="display: none;">
+                                <td colspan="12" class="text-center text-muted py-4">No matching transactions discovered.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="pumaTripModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl shadow-lg" role="document">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-truck-loading mr-2"></i> Puma Load Entry</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" onclick="closePumaModal()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="/create-puma-order" method="POST" onsubmit="document.getElementById('order_select').disabled = false;">
+                <div class="modal-body bg-light" style="font-size: 0.85rem;">
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h6 class="text-primary font-weight-bold border-bottom pb-1">Order & Fleet Details</h6>
+                        </div>
+
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Driver Name</label>
+                            <select name="driver_name" class="form-control form-control-sm" required>
+                                <option value="">-- Select Driver --</option>
+                                {% for name in drivers %}
+                                    <option value="{{ name }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Truck Reg</label>
+                            <select name="truck_reg" id="truck_select" class="form-control form-control-sm" required onchange="handleTruckChange()">
+                                <option value="">-- Select Truck --</option>
+                                {% for reg in trucks %}
+                                    <option value="{{ reg }}">{{ reg }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Trailer Reg</label>
+                            <input type="text" name="trailer_reg" id="trailer_input" class="form-control form-control-sm" placeholder="Autofills or type here...">
+                        </div>
+
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Product</label>
+                            <select name="product" class="form-control form-control-sm">
+                                <option value="D50">D50 (Diesel)</option>
+                                <option value="ULP95">ULP95 (Petrol)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 form-group mt-2">
+                            <label class="small font-weight-bold text-danger">Puma Order #</label>
+                            <input type="hidden" name="puma_order_number_fallback" id="order_hidden">
+                            <select name="puma_order_number" id="order_select" class="form-control form-control-sm border-danger" required onchange="handleOrderChange()">
+                                <option value="">-- Select Open Order --</option>
+                                {% for order in open_orders if order.status == 'OPEN' %}
+                                    <option value="{{ order.puma_order_number }}" 
+                                            data-product="{{ order.product }}" 
+                                            data-point="{{ order.loading_point }}">
+                                        {{ order.puma_order_number }} 
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 form-group mt-2">
+                            <label class="small font-weight-bold">Purchase Order #</label>
+                            <input type="text" name="purchase_order_number" class="form-control form-control-sm">
+                        </div>
+
+                        <div class="col-md-4 form-group mt-2">
+                            <label class="small font-weight-bold">Supplier Order #</label>
+                            <input type="text" name="supplier_order_number" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4 form-group">
+                            <label class="small font-weight-bold">Destination Country</label>
+                            <select class="form-control form-control-sm" name="destination_country">
+                                <option value="LESOTHO">LESOTHO</option>
+                                <option value="SOUTH AFRICA">SOUTH AFRICA</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 form-group">
+                            <label class="small font-weight-bold">Loading KM</label>
+                            <input type="number" name="loading_km" class="form-control form-control-sm">
+                        </div>
+
+                        <div class="col-md-4 form-group">
+                            <label class="small font-weight-bold">Offloading KM</label>
+                            <input type="number" name="offloading_km" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12"><h6 class="text-primary font-weight-bold border-bottom pb-1">Loading & Slots</h6></div>
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Load Point</label>
+                            <input type="text" name="load_point" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <label class="small font-weight-bold">Slot Booked</label>
+                            <input type="time" name="slot_booked" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <label class="small font-weight-bold">Slot Number</label>
+                            <input type="text" name="slot_number" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-5 form-group">
+                            <label class="small font-weight-bold d-block text-truncate">Dates (Release / Report / Loading / Depart)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="date" name="order_release_date" class="form-control">
+                                <input type="date" name="report_date_loading" class="form-control">
+                                <input type="date" name="loading_date" class="form-control">
+                                <input type="date" name="departure_date_loading" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12"><h6 class="text-primary font-weight-bold border-bottom pb-1">Transit & Border Tracking</h6></div>
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold text-orange">Current Position</label>
+                            <input type="text" name="current_position" class="form-control form-control-sm border-warning">
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Border 1 (Arrival / Departure)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="datetime-local" name="arrival_border_1" class="form-control">
+                                <input type="datetime-local" name="departure_border_1" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Border 2 (Arrival / Departure)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="datetime-local" name="arrival_border_2" class="form-control">
+                                <input type="datetime-local" name="departure_border_2" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Comments</label>
+                            <textarea name="comments" class="form-control form-control-sm" rows="1"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12"><h6 class="text-primary font-weight-bold border-bottom pb-1">Offloading & Compliance</h6></div>
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Discharge Point</label>
+                            <input type="text" name="discharge_point" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label class="small font-weight-bold">Arrival Site & Offload Date</label>
+                            <div class="input-group input-group-sm">
+                                <input type="datetime-local" name="arrival_delivery_site" class="form-control">
+                                <input type="date" name="offload_date" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <label class="small font-weight-bold">Liters (Load/Offload)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="loaded_lits" class="form-control" placeholder="Load">
+                                <input type="number" name="offloaded_lits" class="form-control" placeholder="Offl">
+                            </div>
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <label class="small font-weight-bold">POD & Invoiced</label>
+                            <div class="input-group input-group-sm">
+                                <select name="pod_submitted" class="form-control">
+                                    <option value="N">POD?</option>
+                                    <option value="Y">Yes</option>
+                                    <option value="N">No</option>
+                                </select>
+                                <select name="invoiced" class="form-control">
+                                    <option value="N">Inv?</option>
+                                    <option value="Y">Yes</option>
+                                    <option value="N">No</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <label class="small font-weight-bold">Submission Date</label>
+                            <input type="date" name="submission_date" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="closePumaModal()">Close</button>
+                    <button type="submit" name="action" value="save" class="btn btn-primary btn-sm px-3">Save Details</button>
+                    <button type="submit" name="action" value="generate_pdf" class="btn btn-success btn-sm px-3">
+                        <i class="fas fa-file-pdf mr-1"></i> Save & PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const truckTrailerData = {{ truck_map | tojson | safe }};
+    let pumaModalInstance = null;
+    
+    let activeMonthCode = "";
+    let statusFiltersByMonth = {};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Build sub-tab memory indices
+        document.querySelectorAll('.month-content-group').forEach(group => {
+            const mCode = group.getAttribute('data-month-code');
+            statusFiltersByMonth[mCode] = 'all';
+        });
+
+        document.getElementById('tableSearch').addEventListener('keyup', executeCombinedPipelineFilter);
+
+        // --- AUTOMATIC RUNTIME CURRENT MONTH SELECTOR SYSTEM ---
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const targetCurrentMonthStr = `${year}-${month}`; // Evaluates dynamically to "2026-06"
+        
+        // Find the active month tab explicitly
+        let targetBtn = document.querySelector(`[data-month-id="${targetCurrentMonthStr}"]`);
+        
+        // Robust fallback: if "2026-06" button isn't tracked yet, forcefully select it or search the elements
+        if (!targetBtn) {
+            targetBtn = document.querySelector('[data-month-id="2026-06"]');
+        }
+        if (!targetBtn) {
+            targetBtn = document.querySelector('.month-tab-btn'); // absolute default fallback
+        }
+        
+        if (targetBtn) {
+            targetBtn.click();
+        }
+    });
+
+    // --- PIPELINE 1: MONTH SWITCHER ---
+    function switchMonth(targetMonth, element) {
+        document.querySelectorAll('.month-tab-btn').forEach(btn => btn.classList.remove('active'));
+        element.classList.add('active');
+
+        document.querySelectorAll('.month-content-group').forEach(panel => panel.classList.remove('active'));
+        
+        const targetPanel = document.getElementById('panel-' + targetMonth);
+        if (targetPanel) {
+            targetPanel.classList.add('active');
+        }
+
+        activeMonthCode = targetMonth;
+        executeCombinedPipelineFilter();
+    }
+
+    // --- PIPELINE 2: SUB STATUS FILTER INSIDE THE ACTIVE MONTH ---
+    function filterTab(statusCategory, element, monthCode) {
+        const parentPanel = document.getElementById('panel-' + monthCode);
+        if (parentPanel) {
+            parentPanel.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        statusFiltersByMonth[monthCode] = statusCategory;
+        executeCombinedPipelineFilter();
+    }
+
+    // --- PIPELINE 3: COMBINED MULTI-TIER ENGINE ---
+    function executeCombinedPipelineFilter() {
+        const searchQuery = document.getElementById('tableSearch').value.toLowerCase().trim();
+        const activePanel = document.getElementById('panel-' + activeMonthCode);
+        if (!activePanel) return;
+
+        const targetStatus = statusFiltersByMonth[activeMonthCode] || 'all';
+        const rows = activePanel.querySelectorAll('.trackingTableMaster tbody tr:not(.no-records-fallback):not(.search-fallback-row)');
+        let matchCounter = 0;
+
+        rows.forEach(row => {
+            const rowCategory = row.getAttribute('data-tab-category');
+            const contentText = row.textContent.toLowerCase();
+
+            const statusMatch = (targetStatus === 'all' || rowCategory === targetStatus);
+            const searchMatch = (searchQuery === '' || contentText.includes(searchQuery));
+
+            if (statusMatch && searchMatch) {
+                row.style.display = '';
+                matchCounter++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const searchFallback = activePanel.querySelector('.search-fallback-row');
+        if (searchFallback) {
+            searchFallback.style.display = (matchCounter === 0) ? '' : 'none';
+        }
+    }
+
+    function handleOrderChange() {
+        const orderSelect = document.getElementById('order_select');
+        const selectedOption = orderSelect.options[orderSelect.selectedIndex];
+        if (selectedOption && selectedOption.value !== "") {
+            document.querySelector('[name="product"]').value = selectedOption.getAttribute('data-product') || 'D50';
+            document.querySelector('[name="load_point"]').value = selectedOption.getAttribute('data-point') || '';
+        }
+    }
+
+    function handleTruckChange() {
+        const selectedReg = document.getElementById('truck_select').value;
+        document.getElementById('trailer_input').value = truckTrailerData[selectedReg] || "";
+    }
+
+    function closePumaModal() {
+        const modalElement = document.getElementById('pumaTripModal');
+        if (pumaModalInstance) { pumaModalInstance.hide(); } else { $('#pumaTripModal').modal('hide'); }
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) { backdrop.remove(); }
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        modalElement.classList.remove('show');
+        modalElement.style.display = 'none';
+    }
+
+function openEditModal(trip) {
+        const modalElement = document.getElementById('pumaTripModal');
+        const modalForm = modalElement.querySelector('form');
+        
+        if (!pumaModalInstance && window.bootstrap && bootstrap.Modal) {
+            pumaModalInstance = new bootstrap.Modal(modalElement);
+        }
+
+        modalElement.querySelector('.modal-title').innerHTML = '<i class="fas fa-edit mr-2"></i> Update Puma Load';
+        const header = modalElement.querySelector('.modal-header');
+        header.classList.remove('bg-primary');
+        header.classList.add('bg-info');
+        modalForm.setAttribute('action', '/update-puma-order');
+        modalForm.reset();
+
+        // --- ROBUST DATE SANITIZER ---
+        const sanitizeDate = (val) => {
+            if (!val || val === '---') return '';
+            // Convert YYYY/MM/DD to YYYY-MM-DD
+            if (val.includes('/')) return val.replace(/\//g, '-');
+            // If it's a datetime string, return the date part
+            return val.toString().split(' ')[0].replace('T', ' ');
+        };
+
+        Object.keys(trip).forEach(key => {
+            let input = modalForm.querySelector(`[name="${key}"]`);
+            if (!input) {
+                if (key === 'loading_km') input = modalForm.querySelector('[name="loading_km"]');
+                if (key === 'offloading_km') input = modalForm.querySelector('[name="offloading_km"]');
+            }
+            if (input) {
+                let value = trip[key];
+                if (value !== null && value !== undefined && value !== "---") {
+                    
+                    if (input.type === 'date') {
+                        input.value = sanitizeDate(value);
+                    } else if (input.type === 'datetime-local') {
+                        // Ensure format YYYY-MM-DDTHH:MM
+                        input.value = value.toString().replace(' ', 'T').substring(0, 16);
+                    } else {
+                        input.value = value;
+                    }
+                }
+            }
+        });
+
+        // Handle Order Selection
+        const orderSelect = document.getElementById('order_select');
+        const orderHidden = document.getElementById('order_hidden');
+        if (orderSelect && trip.puma_order_number) {
+            const val = String(trip.puma_order_number);
+            
+            // Ensure the option exists
+            let optionExists = false;
+            for (let i = 0; i < orderSelect.options.length; i++) {
+                if (String(orderSelect.options[i].value) === val) { 
+                    optionExists = true; 
+                    break; 
+                }
+            }
+            if (!optionExists) {
+                const newOpt = document.createElement('option');
+                newOpt.value = val;
+                newOpt.text = val;
+                orderSelect.add(newOpt);
+            }
+            
+            orderSelect.value = val;
+            orderSelect.disabled = true;
+            orderHidden.value = val;
+        }
+
+        if (pumaModalInstance) { pumaModalInstance.show(); } else { $('#pumaTripModal').modal('show'); }
+    }
+
+    $(document).ready(function() {
+        $('#pumaTripModal').on('hidden.bs.modal', function () {
+            const modalElement = document.getElementById('pumaTripModal');
+            const modalForm = modalElement.querySelector('form');
+            modalForm.reset();
+            modalForm.setAttribute('action', '/create-puma-order');
+            modalElement.querySelector('.modal-title').innerHTML = '<i class="fas fa-truck-loading mr-2"></i> Puma Load Entry';
+            const header = modalElement.querySelector('.modal-header');
+            header.classList.remove('bg-info');
+            header.classList.add('bg-primary');
+            
+            if (document.getElementById('order_select')) document.getElementById('order_select').disabled = false;
+            if (document.getElementById('order_hidden')) document.getElementById('order_hidden').value = "";
+        });
+    });
+</script>
+{% endblock %}

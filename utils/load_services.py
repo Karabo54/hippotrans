@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime
+from logic.vehicles import load_vehicles
 
 SERVICES_FILE = "DATA/service_history.csv"
 
@@ -28,23 +29,38 @@ def save_services(services):
 
 def add_service_entry(form):
     services = load_services()
+    vehicles = load_vehicles()
 
-    km_at_service = int(form.get("km_at_service", 0))
-    service_target_km = int(form.get("service_target_km", 0))
+    # 1. Get current vehicle data to find the "Previous Target"
+    truck_reg = form.get("truck_reg")
+    vehicle = next((v for v in vehicles if v.get("truck_reg") == truck_reg), {})
+    
+    # The "Previous Target" is what was stored in the vehicle master list before this update
+    previous_target = int(vehicle.get("next_service_km") or 0)
+    
+    # 2. Get data from the new form
+    current_service_km = int(form.get("service_km", 0))
+    next_goal_km = int(form.get("next_service_km", 0))
 
-    km_difference = km_at_service - service_target_km
+    # 3. Calculate KM Difference (How late/early the truck was)
+    # Negative means early, Positive means late
+    diff = 0
+    if previous_target > 0:
+        diff = current_service_km - previous_target
 
-    new_service = {
-        "truck_reg": form.get("truck_reg"),
+    # 4. Create the new entry with matching keys for your CSV
+    new_entry = {
+        "truck_reg": truck_reg,
         "service_date": form.get("service_date"),
-        "km_at_service": str(km_at_service),
-        "service_target_km": str(service_target_km),
+        "service_km": current_service_km,
+        "next_service_km": next_goal_km,
         "service_place": form.get("service_place"),
-        "km_difference": str(km_difference),
+        "km_difference": diff,
         "service_type": form.get("service_type"),
-        "notes": form.get("notes"),
+        "notes": form.get("notes")
     }
 
-    services.append(new_service)
+    # 5. Append and Save
+    services.append(new_entry)
     save_services(services)
     return True
