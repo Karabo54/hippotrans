@@ -1,13 +1,13 @@
 breakdown_id,truck_reg,driver,location,issue_description,reported_date,reported_time,km_at_breakdown,status,repair_start_date,repair_end_date,downtime_hours,repair_cost,workshop,notes,mechanic,work_done,parts_issued,start_date,end_date
-260311141923,HTW022FS,Lebohang Tjabaka,Camperdown,Chevron loose,2026-03-11,15:20,756214,REPAIRED,,,,6.0,,,Mathaba ,Screwed tite the bouts of the Chevron,bouts (),,2026-03-11
-260311144216,HNL763FS,Motebang Ratefane,MAPUTSOE,"Airleak on the Trailer, Trailer cannot offload",2026-03-11,14:41,756214,REPAIRED,,,,0.0,,,Matobo,"Replaced a size 8 pipe on top of the trailer 
-Put a fitting of size 8 too",Size 8 Pipe (),,2026-03-11
-260311144859,HTD141FS,Moeketsi Monaheng,MOOI RIVER,Truck cannot Start,2026-03-11,14:47,7562813,REPAIRED,,,,0.0,,,Mathaba ,Jumpstarted, (),,2026-03-11
-260311150553,HXL962FS,Lebohang Tjabaka,ULTRA CITY,Truck cannot Start,2026-03-11,15:05,795248,REPAIRED,,,,0.0,,,Mathaba ,Jumpstarted,N/A (N/A),,2026-03-11
-260311154739,HNL763FS,Leabua Phalatsi,Amersfoort,Waterpipe burst,2026-03-11,15:47,764252,REPAIRED,,,,0.0,,,Mathaba ,Replaced water pipe, (),,2026-03-11
-260311160302,HMZ106FS,Lebohang Tjabaka,Amersfoort,Water Pipe Burst,2026-03-11,16:59,782469,REPAIRED,,,,0.0,,,Mathaba ,Replaced the water pipe ,water pipe  (W.pipe203),,2026-03-13
-260311161854,HNL763FS,Michael Tjopinyana,MOOI RIVER,Tyre Blow out,2026-03-11,16:18,796542,REPAIRED,,,,0.0,,,M.Mokoena,Replaced a tyre,New 385 Tyre (),,2026-03-11
-260317104258,HTW022FS,Fusi Mokoena,WALTLOO,TYRE BURST,2026-03-17,10:42,588888,REPAIRED,,,,0.0,,,M.Mokoena,Replaced the tyre,Tyre (N/A),,2026-03-18
-260331112357,HPT062FS,Sekome Monokoane,WALTLOO,"Truck has no power, has engine light on the dashboard",2026-03-24,06:50,699332,IN REPAIR,,,,,,,,,,,
-260415105347,HTW022FS,Fusi Mokoena,ULTRA CITY,TYRE BURST,2026-04-15,08:53,123456,REPAIRED,,,,0.0,,,M.Mokoena,REPLACED TYRE SIZE 315,New 315 Tyre (N/A),,2026-04-15
-260604165122,HSR127FS,Tlebere Morenakemang,MOOI RIVER,TYRE BURST,2026-06-04,16:50,120,REPAIRED,,,,0.0,,,Mathaba ,REPLACED TYRE,New 385 Tyre (W.pipe203),,2026-06-04
+2.60E+11,HTW022FS,Lebohang Tjabaka,Camperdown,Chevron loose,2026/03/11,15:20,756214,REPAIRED,,,,6,,,Mathaba ,Screwed tite the bouts of the Chevron,bouts (),,2026/03/11
+2.60E+11,HNL763FS,Motebang Ratefane,MAPUTSOE,"Airleak on the Trailer, Trailer cannot offload",2026/03/11,14:41,756214,REPAIRED,,,,0,,,Matobo,"Replaced a size 8 pipe on top of the trailer 
+Put a fitting of size 8 too",Size 8 Pipe (),,2026/03/11
+2.60E+11,HTD141FS,Moeketsi Monaheng,MOOI RIVER,Truck cannot Start,2026/03/11,14:47,7562813,REPAIRED,,,,0,,,Mathaba ,Jumpstarted, (),,2026/03/11
+2.60E+11,HXL962FS,Lebohang Tjabaka,ULTRA CITY,Truck cannot Start,2026/03/11,15:05,795248,REPAIRED,,,,0,,,Mathaba ,Jumpstarted,N/A (N/A),,2026/03/11
+2.60E+11,HNL763FS,Leabua Phalatsi,Amersfoort,Waterpipe burst,2026/03/11,15:47,764252,REPAIRED,,,,0,,,Mathaba ,Replaced water pipe, (),,2026/03/11
+2.60E+11,HMZ106FS,Lebohang Tjabaka,Amersfoort,Water Pipe Burst,2026/03/11,16:59,782469,REPAIRED,,,,0,,,Mathaba ,Replaced the water pipe ,water pipe  (W.pipe203),,2026/03/13
+2.60E+11,HNL763FS,Michael Tjopinyana,MOOI RIVER,Tyre Blow out,2026/03/11,16:18,796542,REPAIRED,,,,0,,,M.Mokoena,Replaced a tyre,New 385 Tyre (),,2026/03/11
+2.60E+11,HTW022FS,Fusi Mokoena,WALTLOO,TYRE BURST,2026/03/17,10:42,588888,REPAIRED,,,,0,,,M.Mokoena,Replaced the tyre,Tyre (N/A),,2026/03/18
+2.60E+11,HPT062FS,Sekome Monokoane,WALTLOO,"Truck has no power, has engine light on the dashboard",2026/03/24,06:50,699332,IN REPAIR,,,,,,,,,,,
+2.60E+11,HTW022FS,Fusi Mokoena,ULTRA CITY,TYRE BURST,2026/04/15,08:53,123456,REPAIRED,,,,0,,,M.Mokoena,REPLACED TYRE SIZE 315,New 315 Tyre (N/A),,2026/04/15
+2.61E+11,HSR127FS,Tlebere Morenakemang,MOOI RIVER,TYRE BURST,2026/06/04,16:50,120,REPAIRED,,,,0,,,Mathaba ,REPLACED TYRE,New 385 Tyre (W.pipe203),,2026/06/04

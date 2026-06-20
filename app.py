@@ -2,6 +2,8 @@ import os,json,io
 import csv,time
 import uuid
 import pdfkit
+from flask import make_response
+from logic.vehicles import auto_update_all_vehicle_km
 import tempfile
 import smtplib
 import pandas as pd
@@ -208,6 +210,21 @@ def load_user(username):
     
     return find_user(username)
 
+def generate_pdf_response(html_content):
+    # Create a buffer to store the PDF
+    result = io.BytesIO()
+
+    # Convert HTML to PDF
+    pisa_status = pisa.CreatePDF(html_content, dest=result)
+
+    if pisa_status.err:
+        return "Error generating PDF", 500
+
+    # Create the response
+    response = make_response(result.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'inline; filename=loading_advice.pdf'
+    return response
 
 def role_required(allowed_roles):
     def decorator(f):
@@ -492,6 +509,28 @@ def auto_update_vehicle_km_from_trips():
 
     save_vehicles(vehicles)
 
+import platform
+import subprocess
+
+
+def get_pdfkit_config():
+    if platform.system() == "Windows":
+        # Your local Windows path
+        return pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+    else:
+        # On Linux/Render, the buildpack makes it available in the PATH
+        # We find the path automatically
+        try:
+            # 'which' command finds the location of the executable
+            path = subprocess.check_output(['which', 'wkhtmltopdf']).decode().strip()
+            return pdfkit.configuration(wkhtmltopdf=path)
+        except Exception:
+            # Fallback for Render environments
+            return pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
+
+# Integration Example:
+# Replace your current pdfkit.from_string(...) calls with:
+# pdf = pdfkit.from_string(html_content, False, configuration=get_pdfkit_config())
 
 def load_food_allowance():
     allowances = []
@@ -1007,7 +1046,7 @@ def compute_volume_correction():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-
+    auto_update_all_vehicle_km()
     TRIPS_PATH = "DATA/trips.csv"
     months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
               "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
@@ -1471,6 +1510,8 @@ def dashboard():
         months=months,
         idle_fleet=idle_fleet_data
     )
+
+
 #=======================================PUMA=================================================
 @app.route('/puma-ops')
 @login_required
@@ -1574,7 +1615,7 @@ def puma_ops():
         'planned': len(open_orders),
         'loaded_count': len([t for t in trips_list if t.get('status') != 'CANCELLED'])
     }
-
+    auto_update_all_vehicle_km()
     return render_template(
         'trips/puma_trips.html', 
         trips=trips_list, 
@@ -1713,7 +1754,8 @@ def create_puma_order():
         'current_position', 'comments', 'arrival_border_1', 'departure_border_1', 
         'arrival_border_2', 'departure_border_2', 'arrival_delivery_site', 
         'offload_date', 'discharge_point', 'loaded_lits', 'offloaded_lits', 
-        'loss_gain', 'pod_submitted', 'submission_date', 'invoiced'
+        'loss_gain', 'pod_submitted', 'submission_date', 'invoiced',
+        'destination_country', 'loading_km', 'offloading_km', 'status' # <--- ADD THESE
     ]
 
     try:
@@ -1753,7 +1795,7 @@ def create_puma_order():
         flash("Excel has the file locked. Close it to save.", "danger")
     except Exception as e:
         flash(f"Error: {str(e)}", "danger")
-
+    auto_update_all_vehicle_km()
     return redirect(url_for('puma_ops'))
 
 
@@ -1869,7 +1911,13 @@ def generate_loading_advice(order_no):
                     'load-media-error-handling': 'ignore'
                 }
         
-        pdf = pdfkit.from_string(html_content, False, configuration=config, options=options)
+        # Use the dynamic configuration:
+        pdf = pdfkit.from_string(
+            html_content, 
+            False, 
+            configuration=config, 
+            options=options
+        )
         
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
@@ -3892,7 +3940,7 @@ def trips():
         drivers_list = d_df.to_dict('records')
 
     # 7. FINALIZE FOR TEMPLATE
-    auto_update_vehicle_km_from_trips()
+    auto_update_all_vehicle_km()
     trips_by_month = group_trips_by_month(all_trips)
     
     stats = {
@@ -3916,6 +3964,7 @@ def trips():
     )
 
 #----------------------------EMPTINESS------------------------------------------------------------
+
 
 @app.route('/generate-emptiness-cert/<order_no>')
 @login_required
@@ -3971,7 +4020,7 @@ def generate_emptiness_cert(order_no):
                             compartments.append({'number': i})
                     except (ValueError, TypeError):
                         continue
-
+        
         # 4. Context for Template
         context = {
             'order_no': order_no,
@@ -3979,7 +4028,8 @@ def generate_emptiness_cert(order_no):
             'driver': trip.get('driver' if source == 'ENGEN' else 'driver_name', 'N/A'),
             'truck': trip.get('truck_reg', 'N/A'),
             'trailer': trailer_reg,
-            'logo_path': os.path.join(PROJECT_ROOT, 'static', 'images', 'logo.png').replace('\\', '/'),
+            # Change your logo_path line to this:
+            'logo_path': 'file:///' + os.path.join(PROJECT_ROOT, 'static', 'images', 'logo.png').replace('\\', '/'),
             'compartments': compartments
         }
 
@@ -3988,14 +4038,28 @@ def generate_emptiness_cert(order_no):
         
         path_to_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
         config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
+        
+        # Use the exact same 'bulletproof' options from the working route
         options = {
             'page-size': 'A4',
-            'margin-top': '0', 'margin-bottom': '0',
-            'margin-left': '0', 'margin-right': '0',
-            'enable-local-file-access': None
+            'margin-top': '0',
+            'margin-bottom': '0',
+            'margin-left': '0',
+            'margin-right': '0',
+            'enable-local-file-access': None, # Note: None is preferred over True in some versions
+            'quiet': '',
+            'disable-smart-shrinking': '',
+            'no-stop-slow-scripts': '',
+            'load-error-handling': 'ignore',
+            'load-media-error-handling': 'ignore'
         }
         
-        pdf = pdfkit.from_string(html_content, False, configuration=config, options=options)
+        pdf = pdfkit.from_string(
+            html_content, 
+            False, 
+            configuration=config, 
+            options=options # <--- YOU MUST PASS THIS
+        )
         
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
@@ -4072,7 +4136,7 @@ def secondary_trips():
             trips = df_t.to_dict('records')
     except Exception:
         trips = []
-
+    auto_update_all_vehicle_km()
     return render_template(
         'secondary_trips.html', 
         trips=trips, 
@@ -4140,7 +4204,7 @@ def save_multi_drop_trip():
         df_combined.to_csv(CSV_PATH, index=False)
     except PermissionError:
         return jsonify({"status": "error", "message": "Permission Denied: Ensure DATA/secondary_trips.csv is not open in Excel."}), 500
-
+    
     return jsonify({"status": "success", "message": "Multi-drop voyage dispatched successfully."})
 
 @app.route('/api/get_multi_drop_trip/<trip_id>', methods=['GET'])
@@ -4177,7 +4241,7 @@ def get_multi_drop_trip(trip_id):
             "dn_number": str(row.get('dn_number') if pd.notna(row.get('dn_number')) else ""),
             "status": str(row.get('status', 'IN TRANSIT'))
         })
-
+    auto_update_all_vehicle_km()
     return jsonify({"header": header_data, "stops": stops_list})
 
 @app.route('/api/update_multi_drop_trip', methods=['POST'])
@@ -4240,7 +4304,7 @@ def update_multi_drop_trip():
         df_final.to_csv(CSV_PATH, index=False)
     except PermissionError:
         return jsonify({"status": "error", "message": "Permission Denied: Close your CSV file if open in Excel."}), 500
-
+    auto_update_all_vehicle_km()
     return jsonify({"status": "success", "message": "Trip log parameters synchronized successfully."})
 
 @app.route('/api/delete_multi_drop_trip/<trip_id>', methods=['DELETE'])
@@ -5190,5 +5254,7 @@ def serve_incident_report(filename):
     return send_from_directory('uploads/incidents', filename)
 # -------------------- RUN APP --------------------
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    # Use the PORT environment variable provided by Render, or default to 5000
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
