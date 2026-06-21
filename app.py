@@ -4864,7 +4864,7 @@ SMTP_PORT = 465 # Use 587 for Outlook with starttls()
 EMAIL_USER = "karabotsoeu54@gmail.com"
 EMAIL_PASS = "nptg tfpp zwfz kmlb"
 # Change this:
-RECEIVER_EMAIL = ["operations@smsfuel.co.za", "info@smsfuel.co.za"]
+RECEIVER_EMAIL = ["fuel@hippotrans.com", "operations@httrust.co.za"]
 
 def get_allowance_df():
     files = {
@@ -5036,7 +5036,7 @@ def send_allowance_email(df_to_send):
             {html_table}
         </table>
         <br>
-        <p>Kind regards,<br><b>SMS FUEL PTY LTD</b></p>
+        <p>Kind regards,<br><b>HIPPO TRANSPORT OPERATION</b></p>
     </body>
     </html>
     """
