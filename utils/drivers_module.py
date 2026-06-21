@@ -10,7 +10,7 @@ def get_bto_registry():
         
     # EXACT HEADERS matching your requirement
     cols = [
-        'bto_id', 'NAME/SURNAME', 'DOB', 'ID NO', 'AGE', 'Medical Condition', 
+        'bto_id', 'driver', 'DOB', 'ID NO', 'AGE', 'Medical Condition', 
         'Drivers License Exp Date', 'PDrP Exp Date', 'International Driving Permit -Exp Date', 
         'Defensive Driving- Exp Date', 'Smith System Expiry Date', 'Medical Exp Date', 
         'Loadind and Offloading procedure', 'In Cab Assessment K53', 'In Cab Assessment K53 Expiry Date', 

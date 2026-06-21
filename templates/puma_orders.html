@@ -45,11 +45,11 @@
                         <tbody>
                             {% if open_count > 0 %}
                                 {% for order in orders if order.status == 'OPEN' %}
-                                <tr id="row-{{ order.puma_order_number }}">
+                                <tr id="row-{{ order.order_number }}">
                                     <td class="ps-3">
-                                        <input class="form-check-input order-checkbox open-cb" type="checkbox" value="{{ order.puma_order_number }}" onchange="evaluateCheckboxSelection()">
+                                        <input class="form-check-input order-checkbox open-cb" type="checkbox" value="{{ order.order_number }}" onchange="evaluateCheckboxSelection()">
                                     </td>
-                                    <td class="fw-bold text-mono target-ord-num">{{ order.puma_order_number }}</td>
+                                    <td class="fw-bold text-mono target-ord-num">{{ order.order_number }}</td>
                                     <td class="target-product">
                                         <span class="badge {% if order.product == 'ULP95' %}bg-primary{% else %}bg-secondary{% endif %} px-2">
                                             {{ order.product }}
@@ -57,7 +57,7 @@
                                     </td>
                                     <td class="target-point"><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ order.loading_point }}</small></td>
                                     <td class="text-end pe-3">
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-action-size shadow-xs" onclick="cancelSingleOrder('{{ order.puma_order_number }}')">
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-action-size shadow-xs" onclick="cancelSingleOrder('{{ order.order_number }}')">
                                             <i class="fas fa-times me-1"></i> Cancel
                                         </button>
                                     </td>
@@ -102,11 +102,11 @@
                         <tbody id="cancelledTableBody">
                             {% if cancelled_count > 0 %}
                                 {% for order in orders if order.status == 'CANCELLED' %}
-                                <tr id="row-{{ order.puma_order_number }}" class="order-deactivated bg-light bg-opacity-50">
+                                <tr id="row-{{ order.order_number }}" class="order-deactivated bg-light bg-opacity-50">
                                     <td class="ps-3">
-                                        <input class="form-check-input order-checkbox cancelled-cb animate-events" type="checkbox" value="{{ order.puma_order_number }}" onchange="evaluateCheckboxSelection()">
+                                        <input class="form-check-input order-checkbox cancelled-cb animate-events" type="checkbox" value="{{ order.order_number }}" onchange="evaluateCheckboxSelection()">
                                     </td>
-                                    <td class="fw-bold text-mono text-decoration-line-through target-ord-num">{{ order.puma_order_number }}</td>
+                                    <td class="fw-bold text-mono text-decoration-line-through target-ord-num">{{ order.order_number }}</td>
                                     <td class="target-product">
                                         <span class="badge bg-outline-muted text-muted border px-2">
                                             {{ order.product }}
@@ -114,7 +114,7 @@
                                     </td>
                                     <td class="target-point"><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ order.loading_point }}</small></td>
                                     <td class="text-end pe-3">
-                                        <button type="button" class="btn btn-sm btn-outline-success btn-action-size shadow-xs animate-events" onclick="reactivateSingleOrder('{{ order.puma_order_number }}')">
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-action-size shadow-xs animate-events" onclick="reactivateSingleOrder('{{ order.order_number }}')">
                                             <i class="fas fa-redo me-1"></i> Reactivate
                                         </button>
                                     </td>

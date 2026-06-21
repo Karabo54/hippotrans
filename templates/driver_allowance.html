@@ -6,12 +6,23 @@
         <button type="submit" class="btn btn-success">📩 Request Food Allowance (Email CSV)</button>
     </form>
 
+    <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><strong>Available for Request</strong></h2>
+    <div>
+        <a href="/driver/export/excel" class="btn btn-info btn-sm">📊 Export Excel</a>
+        <a href="/driver/export/pdf" class="btn btn-secondary btn-sm">📄 Export PDF</a>
+    </div>
+</div>
     <table class="table mt-3">
         <thead class="thead-dark">
             <tr>
                 <th>Driver</th>
                 <th>Date</th>
+                <th>Order Number</th>
+                <th>Shipment</th>
+                <th>Customer</th>
                 <th>Route</th>
+                <th>Truck</th>
                 <th>Amount</th>
             </tr>
         </thead>
@@ -20,7 +31,11 @@
             <tr>
                 <td>{{ item.driver }}</td>
                 <td>{{ item.date_loaded }}</td>
+                <td>{{item.order_number}}</td>
+                <td>{{ item.display_ref }}</td>
+                <td>{{item.customer}}</td>
                 <td>{{ item.loading_point }} → {{ item.offloading_point }}</td>
+                <td>{{item.truck_reg}}</td>
                 <td>R {{ "{:,.2f}".format(item.food_allowance | float) }}</td>
             </tr>
             {% endfor %}
@@ -61,6 +76,8 @@
                         <td><strong>R {{ "{:,.2f}".format(item.food_allowance | float) }}</strong></td>
                         <td>
                             <form action="/driver/mark_single_paid/{{ item.original_index | int }}" method="POST" class="form-inline">
+                                <input type="hidden" name="source_file" value="{{ item.source_file }}">
+                                
                                 <input type="text" name="payment_ref" class="form-control form-control-sm mr-1" 
                                     placeholder="Ref #" required style="width: 100px;">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Pay</button>

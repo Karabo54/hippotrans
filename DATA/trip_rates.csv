@@ -1,4 +1,4 @@
-loading_point,discharge_point,base_weight,estimated_days,allowance_tier_zar,trip_type
+loading_point,offloading_point,base_weight,estimated_days,allowance_tier_zar,trip_type
 TOTAL ENERGIES IVT,MAPUTSOE HIPPO TRANSPORT,2.5,2,250,LONG_HAUL
 TOTAL ENERGIES IVT,PUMA DEPOT,2.5,2,250,LONG_HAUL
 TOTAL ENERGIES IVT,ULTRA CITY,2.0,2,200,LONG_HAUL

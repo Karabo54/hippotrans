@@ -21,7 +21,7 @@ def migrate_drivers_fix():
         return
 
     # Using your exact header
-    name_column = 'NAME/SURNAME'
+    name_column = 'driver'
 
     if name_column not in df.columns:
         print(f"Error: Could not find column '{name_column}'")

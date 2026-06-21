@@ -67,10 +67,10 @@
                     </div>
                     <div class="col-md-3">
                         <label class="small fw-bold">DRIVER NAME</label>
-                        <select name="driver_name" id="main_driver_select" class="form-select" required>
+                        <select name="driver" id="main_driver_select" class="form-select" required>
                             <option value="">Select Driver</option>
                             {% for d in drivers %}
-                            <option value="{{ d['NAME/SURNAME'] }}">{{ d['NAME/SURNAME'] }}</option>
+                            <option value="{{ d['driver'] }}">{{ d['driver'] }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -290,7 +290,7 @@
                     <input type="hidden" name="id" id="edit_id">
                     <div class="row g-3">
                         <div class="col-md-6"><label class="small fw-bold">Date</label><input type="date" name="date" id="edit_date" class="form-control" required></div>
-                        <div class="col-md-6"><label class="small fw-bold">Driver Name</label><input type="text" name="driver_name" id="edit_driver" class="form-control" readonly></div>
+                        <div class="col-md-6"><label class="small fw-bold">Driver Name</label><input type="text" name="driver" id="edit_driver" class="form-control" readonly></div>
                         
                         <div class="col-md-12">
                             <label class="small fw-bold">Customer Allocation</label>
@@ -444,7 +444,7 @@ document.addEventListener("DOMContentLoaded", function () {
 function openFatigueModal(entry) {
   document.getElementById("edit_id").value = entry.id !== undefined ? entry.id : entry.index;
   document.getElementById("edit_date").value = entry.date;
-  document.getElementById("edit_driver").value = entry.driver_name;
+  document.getElementById("edit_driver").value = entry.driver;
   document.getElementById("edit_customer").value = entry.customer || "Engen";
   document.getElementById("edit_start").value = entry.start_time || "";
   document.getElementById("edit_end").value = entry.end_time || "";

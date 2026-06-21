@@ -91,9 +91,10 @@
         width: 100%;
         overflow-x: auto;
         background: #ffffff;
+        max-height: 1200px;
     }
     .scrollable-table-wrapper {
-        max-height: 640px;
+        max-height: 800px;
         overflow-y: auto;
     }
     .roster-table {
@@ -189,7 +190,7 @@
             {% set month_loaded = namespace(count=0) %}
             
             {% for trip in trips %}
-                {% set trip_date = trip.loading_date if (trip.loading_date and trip.loading_date != '---') else (trip.order_release_date if (trip.order_release_date and trip.order_release_date != '---') else none) %}
+                {% set trip_date = trip.date_loaded if (trip.date_loaded and trip.date_loaded != '---') else (trip.order_release_date if (trip.order_release_date and trip.order_release_date != '---') else none) %}
                 
                 {# Enroute orders (with no loading date) now securely target the current dashboard runtime month (2026-06) #}
                 {% if (trip_date and month_code in trip_date.replace('/', '-')) or (not trip_date and month_code == '2026-06') %}
@@ -247,7 +248,7 @@
                     <table class="roster-table trackingTableMaster" id="table-{{ month_code }}">
                         <thead>
                             <tr>
-                                <th>Dates (L/O)</th>
+                                <th>Karabo (L/O)</th>
                                 <th>Driver & Vehicle</th>
                                 <th>Order Details</th>
                                 <th>Product</th>
@@ -265,7 +266,7 @@
                             {% set month_trips_count = namespace(value=0) %}
 
                             {% for trip in trips %}
-                                {% set trip_date = trip.loading_date if (trip.loading_date and trip.loading_date != '---') else (trip.order_release_date if (trip.order_release_date and trip.order_release_date != '---') else none) %}
+                                {% set trip_date = trip.date_loaded if (trip.date_loaded and trip.date_loaded != '---') else (trip.order_release_date if (trip.order_release_date and trip.order_release_date != '---') else none) %}
                                 
                                 {# Evaluates matching calendar months or assigns loose 'Enroute' records strictly into current system June dashboard #}
                                 {% if (trip_date and month_code in trip_date.replace('/', '-')) or (not trip_date and month_code == '2026-06') %}
@@ -291,7 +292,7 @@
                                         {% set category_tab = "completed" %}
                                         {% set status_pill = "badge-status-delivered" %}
                                         {% set friendly_status = "DELIVERED" %}
-                                    {% elif not trip.loading_date or trip.loading_date == '' or trip.loading_date == '---' or current_status == 'ENROUTE' %}
+                                    {% elif not trip.date_loaded or trip.date_loaded == '' or trip.date_loaded == '---' or current_status == 'ENROUTE' %}
                                         {% set row_class = "row-no-date" %}
                                         {% set category_tab = "active" %}
                                         {% set status_pill = "badge-status-enroute" %}
@@ -310,15 +311,15 @@
 
                                     <tr onclick='openEditModal({{ trip | tojson | safe }})' class="{{ row_class }}" data-tab-category="{{ category_tab }}">
                                         <td>
-                                            <div class="text-xs"><strong>L:</strong> {{ trip.loading_date if trip.loading_date else '---' }}</div>
+                                            <div class="text-xs"><strong>L:</strong> {{ trip.date_loaded if trip.date_loaded else '---' }}</div>
                                             <div class="text-xs mt-1"><strong>O:</strong> {{ trip.offload_date if trip.offload_date else '---' }}</div>
                                         </td>
                                         <td>
-                                            <strong>{{ trip.driver_name }}</strong><br>
+                                            <strong>{{ trip.driver }}</strong><br>
                                             <span class="text-xs text-muted">{{ trip.truck_reg }} / {{trip.trailer_reg}}</span>
                                         </td>
                                         <td>
-                                            <span class="d-block font-weight-bold text-xs">LO: {{ trip.puma_order_number }}</span>
+                                            <span class="d-block font-weight-bold text-xs">LO: {{ trip.order_number }}</span>
                                             <span class="text-xs text-muted">PO: {{ trip.purchase_order_number }}</span>
                                             <span class="d-block text-xs text-orange">SO: {{ trip.supplier_order_number }}</span>
                                         </td>
@@ -334,7 +335,7 @@
                                                 B2: <span class="{% if trip.departure_border_2 %}text-success{% elif trip.arrival_border_2 %}text-danger{% else %}text-muted{% endif %} font-weight-bold">{% if trip.departure_border_2 %}Cleared{% elif trip.arrival_border_2 %}Hld{% else %}Pending...{% endif %}</span>
                                             </div>
                                         </td>
-                                        <td><div class="text-xs font-weight-bold text-truncate" style="max-width:200px;">{{ trip.discharge_point }}</div></td>
+                                        <td><div class="text-xs font-weight-bold text-truncate" style="max-width:200px;">{{ trip.offloading_point }}</div></td>
                                         <td>
                                             <span class="text-xs">L: {{ "{:,}".format(trip.loaded_lits|int) if trip.loaded_lits else '0' }}</span><br>
                                             <span class="text-xs">O: {{ "{:,}".format(trip.offloaded_lits|int) if trip.offloaded_lits else '0' }}</span>
@@ -350,10 +351,10 @@
                                         </td>
                                         <td class="text-center" onclick="event.stopPropagation();">
                                             <div class="d-flex justify-content-center align-items-center">
-                                                <a href="/generate-loading-advice/{{ trip.puma_order_number }}" class="btn btn-sm p-1 text-danger mr-1" title="Download PDF">
+                                                <a href="/generate-loading-advice/{{ trip.order_number }}" class="btn btn-sm p-1 text-danger mr-1" title="Download PDF">
                                                     <i class="fas fa-file-pdf fa-lg"></i>
                                                 </a>
-                                                <form action="/delete-puma-order/{{ trip.puma_order_number }}" method="POST" onsubmit="return confirm('Are you sure you want to remove or unassign this load?');" style="display:inline;">
+                                                <form action="/delete-puma-order/{{ trip.order_number }}" method="POST" onsubmit="return confirm('Are you sure you want to remove or unassign this load?');" style="display:inline;">
                                                     <button type="submit" class="btn btn-sm p-1 text-muted hover-danger" title="Remove Assignment">
                                                         <i class="fas fa-trash-alt"></i>
                                                     </button>
@@ -401,7 +402,7 @@
 
                         <div class="col-md-3 form-group">
                             <label class="small font-weight-bold">Driver Name</label>
-                            <select name="driver_name" class="form-control form-control-sm" required>
+                            <select name="driver" class="form-control form-control-sm" required>
                                 <option value="">-- Select Driver --</option>
                                 {% for name in drivers %}
                                     <option value="{{ name }}">{{ name }}</option>
@@ -435,13 +436,13 @@
                         <div class="col-md-4 form-group mt-2">
                             <label class="small font-weight-bold text-danger">Puma Order #</label>
                             <input type="hidden" name="puma_order_number_fallback" id="order_hidden">
-                            <select name="puma_order_number" id="order_select" class="form-control form-control-sm border-danger" required onchange="handleOrderChange()">
+                            <select name="order_number" id="order_select" class="form-control form-control-sm border-danger" required onchange="handleOrderChange()">
                                 <option value="">-- Select Open Order --</option>
                                 {% for order in open_orders if order.status == 'OPEN' %}
-                                    <option value="{{ order.puma_order_number }}" 
+                                    <option value="{{ order.order_number }}" 
                                             data-product="{{ order.product }}" 
                                             data-point="{{ order.loading_point }}">
-                                        {{ order.puma_order_number }} 
+                                        {{ order.order_number }} 
                                     </option>
                                 {% endfor %}
                             </select>
@@ -482,7 +483,7 @@
                         <div class="col-12"><h6 class="text-primary font-weight-bold border-bottom pb-1">Loading & Slots</h6></div>
                         <div class="col-md-3 form-group">
                             <label class="small font-weight-bold">Load Point</label>
-                            <input type="text" name="load_point" class="form-control form-control-sm">
+                            <input type="text" name="loading_point" class="form-control form-control-sm">
                         </div>
                         <div class="col-md-2 form-group">
                             <label class="small font-weight-bold">Slot Booked</label>
@@ -497,7 +498,7 @@
                             <div class="input-group input-group-sm">
                                 <input type="date" name="order_release_date" class="form-control">
                                 <input type="date" name="report_date_loading" class="form-control">
-                                <input type="date" name="loading_date" class="form-control">
+                                <input type="date" name="date_loaded" class="form-control">
                                 <input type="date" name="departure_date_loading" class="form-control">
                             </div>
                         </div>
@@ -533,7 +534,7 @@
                         <div class="col-12"><h6 class="text-primary font-weight-bold border-bottom pb-1">Offloading & Compliance</h6></div>
                         <div class="col-md-3 form-group">
                             <label class="small font-weight-bold">Discharge Point</label>
-                            <input type="text" name="discharge_point" class="form-control form-control-sm">
+                            <input type="text" name="offloading_point" class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3 form-group">
                             <label class="small font-weight-bold">Arrival Site & Offload Date</label>
@@ -684,7 +685,7 @@
         const selectedOption = orderSelect.options[orderSelect.selectedIndex];
         if (selectedOption && selectedOption.value !== "") {
             document.querySelector('[name="product"]').value = selectedOption.getAttribute('data-product') || 'D50';
-            document.querySelector('[name="load_point"]').value = selectedOption.getAttribute('data-point') || '';
+            document.querySelector('[name="loading_point"]').value = selectedOption.getAttribute('data-point') || '';
         }
     }
 
@@ -754,8 +755,8 @@ function openEditModal(trip) {
         // Handle Order Selection
         const orderSelect = document.getElementById('order_select');
         const orderHidden = document.getElementById('order_hidden');
-        if (orderSelect && trip.puma_order_number) {
-            const val = String(trip.puma_order_number);
+        if (orderSelect && trip.order_number) {
+            const val = String(trip.order_number);
             
             // Ensure the option exists
             let optionExists = false;

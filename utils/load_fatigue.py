@@ -149,7 +149,7 @@ def group_by_year_month_driver(records):
 
         year = str(date_obj.year)
         month = date_obj.strftime("%B")
-        driver = r.get("driver_name", "Unknown").strip()
+        driver = r.get("driver", "Unknown").strip()
 
         structure[year][month][driver].append(r)
 
@@ -188,7 +188,7 @@ def summarize_by_driver_month(records):
         if not dt:
             continue
 
-        driver = r.get("driver_name", "Unknown").strip()
+        driver = r.get("driver", "Unknown").strip()
         month = dt.strftime("%B")
         key = (driver, month)
 
@@ -229,7 +229,7 @@ def save_working_hours(records):
     with open(FILE_PATH, "w", newline="", encoding="utf-8") as f:
         fieldnames = [
             "date",
-            "driver_name",
+            "driver",
             "customer",
             "start_time",
             "end_time",
@@ -242,7 +242,7 @@ def save_working_hours(records):
         for r in records:
             writer.writerow({
                 "date": r.get("date"),
-                "driver_name": r.get("driver_name"),
+                "driver": r.get("driver"),
                 "customer": r.get("customer", "Other"),
                 "start_time": r.get("start_time"),
                 "end_time": r.get("end_time"),
@@ -268,7 +268,7 @@ def summarize_by_driver_week(records):
             continue
 
         try:
-            driver = r["driver_name"]
+            driver = r["driver"]
             month = dt.strftime("%B")
             week = dt.strftime("Week %U")
 
@@ -311,7 +311,7 @@ def summarize_weekly(records):
             
         year, week, _ = dt.isocalendar()
         key = f"{year}-W{week}"
-        driver = r["driver_name"]
+        driver = r["driver"]
         
         hours = float(r.get("hours_worked", 0) or 0)
         weekly[driver][key]["total_hours"] = round(weekly[driver][key]["total_hours"] + hours, 2)
@@ -428,8 +428,8 @@ def get_registry_drivers():
         reader = csv.DictReader(f)
         for row in reader:
             if row.get('TYPE') == 'DRIVER' or not row.get('TYPE'):
-                name = row.get('NAME/SURNAME', 'Unknown')
+                name = row.get('driver', 'Unknown')
                 if name:
-                    drivers.append({'NAME/SURNAME': name})
+                    drivers.append({'driver': name})
     
-    return sorted(drivers, key=lambda x: x['NAME/SURNAME'])
+    return sorted(drivers, key=lambda x: x['driver'])

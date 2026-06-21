@@ -81,14 +81,14 @@ def calculate_km_and_time(trip):
         trip["difference"] = "0"
 
     # Time taken (uses dates + times — as we fixed before)
-    loading_date = trip.get("date_loaded")
+    date_loaded = trip.get("date_loaded")
     offloading_date = trip.get("date_offloaded")
     loading_time = trip.get("loading_time")
     offloading_time = trip.get("offloading_time")
 
-    if loading_date and offloading_date and loading_time and offloading_time:
+    if date_loaded and offloading_date and loading_time and offloading_time:
         try:
-            start_dt = datetime.strptime(f"{loading_date} {loading_time}", "%Y-%m-%d %H:%M")
+            start_dt = datetime.strptime(f"{date_loaded} {loading_time}", "%Y-%m-%d %H:%M")
             end_dt = datetime.strptime(f"{offloading_date} {offloading_time}", "%Y-%m-%d %H:%M")
             delta = end_dt - start_dt
 

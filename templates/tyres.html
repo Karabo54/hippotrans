@@ -189,8 +189,8 @@
                         </div>
                         <div class="col-md-4">
                             <label class="small fw-bold">ASSIGNED DRIVER</label>
-                            <select name="driver_name" class="form-select">
-                                {% for d in drivers %}<option value="{{ d['NAME/SURNAME'] }}">{{ d['NAME/SURNAME'] }}</option>{% endfor %}
+                            <select name="driver" class="form-select">
+                                {% for d in drivers %}<option value="{{ d['driver'] }}">{{ d['driver'] }}</option>{% endfor %}
                             </select>
                         </div>
                         <div class="col-md-4">

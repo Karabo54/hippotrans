@@ -744,13 +744,13 @@ def get_outstanding_summary():
                 puma_trips_df = pd.read_csv("DATA/puma_trips.csv", dtype=str)
                 puma_trips_df.columns = puma_trips_df.columns.str.strip()
                 
-                # Puma tracks its allocations via 'puma_order_number' or 'order_number'
-                puma_trip_col = 'puma_order_number' if 'puma_order_number' in puma_trips_df.columns else 'order_number'
+                # Puma tracks its allocations via 'order_number' or 'order_number'
+                puma_trip_col = 'order_number' if 'order_number' in puma_trips_df.columns else 'order_number'
                 
                 if puma_trip_col in puma_trips_df.columns:
                     allocated_puma = puma_trips_df[puma_trip_col].dropna().str.strip().unique()
                     
-                    puma_df['match_key'] = puma_df['puma_order_number'].astype(str).str.strip()
+                    puma_df['match_key'] = puma_df['order_number'].astype(str).str.strip()
                     allocated_puma_set = set(allocated_puma) | {x.lstrip('0') for x in allocated_puma if x.strip()}
                     
                     puma_df = puma_df[
@@ -761,8 +761,8 @@ def get_outstanding_summary():
 
             # Normalize the data structure into common layout names
             puma_clean = pd.DataFrame()
-            if 'puma_order_number' in puma_df.columns:
-                puma_clean['order_number'] = puma_df['puma_order_number']
+            if 'order_number' in puma_df.columns:
+                puma_clean['order_number'] = puma_df['order_number']
                 
             if 'product' in puma_df.columns:
                 puma_clean['product'] = puma_df['product']
@@ -1323,7 +1323,7 @@ def dashboard():
                         offloading_groups[point] = []
                     offloading_groups[point].append({
                         'truck': t.get('truck_reg'),
-                        'driver': t.get('driver_name'),
+                        'driver': t.get('driver'),
                         'product': t.get('product'),
                         'status': t.get('status'),
                         'trip_type': 'PUMA'
@@ -1343,7 +1343,7 @@ def dashboard():
             for t in engen_list:
                 status = str(t.get("status", t.get("trip_status", ""))).upper().strip()
                 if status in ["IN TRANSIT", "LOADING"]:
-                    point = str(t.get("offloading_point", t.get("offload_point", "Unknown"))).strip().upper()
+                    point = str(t.get("offloading_point", t.get("offloading_point", "Unknown"))).strip().upper()
                     if point not in offloading_groups:
                         offloading_groups[point] = []
                     offloading_groups[point].append({
@@ -1385,7 +1385,7 @@ def dashboard():
         df_bto = get_bto_registry()
         date_cols = [col for col in df_bto.columns if any(x in col for x in ['Date', 'Exp', 'procedure'])]
         for _, row in df_bto.iterrows():
-            d_name = row.get('NAME/SURNAME', 'Unknown Driver')
+            d_name = row.get('driver', 'Unknown Driver')
             for col in date_cols:
                 date_val = row.get(col, '')
                 if date_val and str(date_val) != 'nan' and date_val != '':
@@ -1517,8 +1517,8 @@ def dashboard():
 @login_required
 def puma_ops():
     # 1. Load Drivers and Vehicles (with clean duplication handling)
-    drivers_df = pd.read_csv('DATA/bto_registry.csv').drop_duplicates(subset=['NAME/SURNAME']).fillna('')
-    drivers_list = drivers_df['NAME/SURNAME'].tolist()
+    drivers_df = pd.read_csv('DATA/bto_registry.csv').drop_duplicates(subset=['driver']).fillna('')
+    drivers_list = drivers_df['driver'].tolist()
 
     vehicles_df = pd.read_csv('DATA/vehicles.csv').drop_duplicates(subset=['truck_reg']).fillna('')
     truck_map = vehicles_df.set_index('truck_reg')['trailer_reg'].to_dict()
@@ -1543,8 +1543,8 @@ def puma_ops():
             df_trips = pd.read_csv(trips_filepath, dtype=str).fillna('')
             df_trips.columns = [c.strip() for c in df_trips.columns]
             
-            if 'puma_order_number' in df_trips.columns:
-                used_order_numbers = set(df_trips['puma_order_number'].str.strip().tolist())
+            if 'order_number' in df_trips.columns:
+                used_order_numbers = set(df_trips['order_number'].str.strip().tolist())
                 
             for record in df_trips.to_dict('records'):
                 raw_status = record.get('status', '').strip().upper()
@@ -1565,7 +1565,7 @@ def puma_ops():
     # Filter open orders so assigned entries are excluded cleanly
     open_orders = []
     for record in open_orders_df.to_dict('records'):
-        order_num = str(record.get('puma_order_number', '')).strip()
+        order_num = str(record.get('order_number', '')).strip()
         status_val = str(record.get('status', 'OPEN')).strip().upper()
         
         if status_val == 'OPEN' and order_num and order_num not in used_order_numbers:
@@ -1583,7 +1583,7 @@ def puma_ops():
     if not df_trips.empty:
         for _, row in df_trips.iterrows():
             # Get the date string and sanitize slashes to hyphens instantly
-            date_str = str(row.get('loading_date', '')).strip() or str(row.get('order_release_date', '')).strip()
+            date_str = str(row.get('date_loaded', '')).strip() or str(row.get('order_release_date', '')).strip()
             date_str = date_str.replace('/', '-')
             
             month_key = "2026-06"  # Safe programmatic default fallback
@@ -1637,24 +1637,24 @@ def read_csv_safe(path, default_cols):
 
 @app.route('/puma-orders')
 def puma_orders_dashboard():
-    orders_df = read_csv_safe(PUMA_ORDERS_CSV, ['puma_order_number', 'product', 'loading_point', 'status'])
-    trips_df = read_csv_safe(PUMA_TRIPS_CSV, ['puma_order_number', 'trip_id'])
+    orders_df = read_csv_safe(PUMA_ORDERS_CSV, ['order_number', 'product', 'loading_point', 'status'])
+    trips_df = read_csv_safe(PUMA_TRIPS_CSV, ['order_number', 'trip_id'])
     
-    orders_df['puma_order_number'] = orders_df['puma_order_number'].astype(str).str.strip()
-    trips_df['puma_order_number'] = trips_df['puma_order_number'].astype(str).str.strip()
+    orders_df['order_number'] = orders_df['order_number'].astype(str).str.strip()
+    trips_df['order_number'] = trips_df['order_number'].astype(str).str.strip()
     
-    loaded_order_numbers = set(trips_df['puma_order_number'].tolist())
+    loaded_order_numbers = set(trips_df['order_number'].tolist())
     
     processed_orders = []
     for _, row in orders_df.iterrows():
-        order_num = row['puma_order_number']
+        order_num = row['order_number']
         current_status = str(row['status']).upper().strip()
         
         if order_num in loaded_order_numbers or current_status == 'LOADED':
             continue  # Exclude loaded orders entirely
             
         processed_orders.append({
-            'puma_order_number': order_num,
+            'order_number': order_num,
             'product': row['product'],
             'loading_point': row['loading_point'],
             'status': current_status
@@ -1678,10 +1678,10 @@ def cancel_puma_orders():
 
     if os.path.exists(PUMA_ORDERS_CSV):
         df = pd.read_csv(PUMA_ORDERS_CSV)
-        df['puma_order_number'] = df['puma_order_number'].astype(str).str.strip()
+        df['order_number'] = df['order_number'].astype(str).str.strip()
         
         # Update matching rows to CANCELLED status
-        df.loc[df['puma_order_number'].isin(order_numbers), 'status'] = 'CANCELLED'
+        df.loc[df['order_number'].isin(order_numbers), 'status'] = 'CANCELLED'
         df.to_csv(PUMA_ORDERS_CSV, index=False)
         
         return jsonify({'status': 'Success', 'message': f'Successfully updated {len(order_numbers)} orders to CANCELLED.'}), 200
@@ -1713,10 +1713,10 @@ def api_reactivate_puma_orders():
             df['status'] = 'OPEN'
             
         # Clean up column tracking variants
-        df['puma_order_number'] = df['puma_order_number'].astype(str).str.strip()
+        df['order_number'] = df['order_number'].astype(str).str.strip()
         
         # Change matched rows back to OPEN status
-        mask = df['puma_order_number'].isin(order_numbers)
+        mask = df['order_number'].isin(order_numbers)
         if mask.any():
             df.loc[mask, 'status'] = 'OPEN'
             # Save the clean tracking matrix back down to storage
@@ -1739,7 +1739,7 @@ def create_puma_order():
     data = request.form.to_dict()
     action = request.form.get('action') 
 
-    order_number = data.get('puma_order_number', '').strip()
+    order_number = data.get('order_number', '').strip()
 
     # NEW: Strict Validation Boundary Check
     if not order_number:
@@ -1747,13 +1747,13 @@ def create_puma_order():
         return redirect(url_for('puma_ops'))
 
     headers = [
-        'driver_name', 'truck_reg', 'trailer_reg', 'puma_order_number', 
+        'driver', 'truck_reg', 'trailer_reg', 'order_number', 
         'purchase_order_number', 'supplier_order_number', 'product', 
-        'load_point', 'slot_booked', 'slot_number', 'order_release_date', 
-        'report_date_loading', 'loading_date', 'departure_date_loading', 
+        'loading_point', 'slot_booked', 'slot_number', 'order_release_date', 
+        'report_date_loading', 'date_loaded', 'departure_date_loading', 
         'current_position', 'comments', 'arrival_border_1', 'departure_border_1', 
         'arrival_border_2', 'departure_border_2', 'arrival_delivery_site', 
-        'offload_date', 'discharge_point', 'loaded_lits', 'offloaded_lits', 
+        'offload_date', 'offloading_point', 'loaded_lits', 'offloaded_lits', 
         'loss_gain', 'pod_submitted', 'submission_date', 'invoiced',
         'destination_country', 'loading_km', 'offloading_km', 'status' # <--- ADD THESE
     ]
@@ -1767,9 +1767,9 @@ def create_puma_order():
             df = pd.DataFrame(columns=headers)
 
         # NEW: Check if this order code already occupies a data record row instance
-        if 'puma_order_number' in df.columns:
-            df['puma_order_number'] = df['puma_order_number'].astype(str).str.strip()
-            if order_number in df['puma_order_number'].values:
+        if 'order_number' in df.columns:
+            df['order_number'] = df['order_number'].astype(str).str.strip()
+            if order_number in df['order_number'].values:
                 flash(f"❌ Rejected: Order {order_number} has already been assigned and loaded before.", "danger")
                 return redirect(url_for('puma_ops'))
 
@@ -1820,8 +1820,8 @@ def generate_loading_advice(order_no):
         trip = None
         source = None
         
-        if order_no in puma_df['puma_order_number'].values:
-            trip = puma_df[puma_df['puma_order_number'] == order_no].iloc[0]
+        if order_no in puma_df['order_number'].values:
+            trip = puma_df[puma_df['order_number'] == order_no].iloc[0]
             source = 'PUMA'
         elif order_no in engen_df['order_number'].values:
             trip = engen_df[engen_df['order_number'] == order_no].iloc[0]
@@ -1831,19 +1831,19 @@ def generate_loading_advice(order_no):
             return redirect(url_for('puma_ops'))
 
         # 2. Extract Data based on Source
-        driver_name = str(trip.get('driver_name' if source == 'PUMA' else 'driver', '')).strip()
+        driver = str(trip.get('driver' if source == 'PUMA' else 'driver', '')).strip()
         customer = 'PUMA ENERGY' if source == 'PUMA' else trip.get('customer', 'ENGEN')
         product = str(trip.get('product', 'ULP95')).upper()
         truck = trip.get('truck_reg', 'N/A')
         trailer = str(trip.get('trailer_reg', 'N/A')).strip()
-        loading_point = trip.get('load_point' if source == 'PUMA' else 'loading_point', 'TERMINAL')
+        loading_point = trip.get('loading_point' if source == 'PUMA' else 'loading_point', 'TERMINAL')
 
         # 3. Registry Lookup
         passport_number = "N/A"
-        if 'name/surname' in registry_df.columns and 'passport_number' in registry_df.columns:
+        if 'driver' in registry_df.columns and 'passport_number' in registry_df.columns:
             # Ensure name column is strings before processing
-            registry_df['clean_name'] = registry_df['name/surname'].astype(str).str.strip().str.lower()
-            matches = registry_df[registry_df['clean_name'] == driver_name.lower()]
+            registry_df['clean_name'] = registry_df['driver'].astype(str).str.strip().str.lower()
+            matches = registry_df[registry_df['clean_name'] == driver.lower()]
             if not matches.empty:
                 passport_number = str(matches['passport_number'].iloc[0]).strip() or "N/A"
 
@@ -1883,7 +1883,7 @@ def generate_loading_advice(order_no):
             'company_name': 'HIPPO TRANSPORT',
             'date': datetime.now().strftime('%d/%m/%Y'),
             'order_no': order_no,
-            'driver': driver_name,
+            'driver': driver,
             'passport_number': passport_number,
             'truck': truck,
             'trailer': trailer,
@@ -1933,15 +1933,15 @@ def generate_loading_advice(order_no):
 def update_puma_order():
     import pandas as pd
     data = request.form.to_dict()
-    order_id = data.get('puma_order_number') or data.get('puma_order_number_fallback')
+    order_id = data.get('order_number') or data.get('puma_order_number_fallback')
     print(order_id)
     try:
         # 1. Load the current data
         df = pd.read_csv(PUMA_TRIPS_CSV, dtype=str).fillna('')
 
         # 2. Find the row index where the order number matches
-        if order_id in df['puma_order_number'].values:
-            idx = df.index[df['puma_order_number'] == order_id][0]
+        if order_id in df['order_number'].values:
+            idx = df.index[df['order_number'] == order_id][0]
 
             # 3. Recalculate loss/gain for the update
             try:
@@ -2000,7 +2000,7 @@ def puma_trips_route():
     try:
         registry_df = pd.read_csv('DATA/bto_registry.csv')
         # Remove duplicates to ensure clean dropdown lists
-        all_drivers = registry_df['driver_name'].dropna().drop_duplicates().tolist()
+        all_drivers = registry_df['driver'].dropna().drop_duplicates().tolist()
     except Exception:
         all_drivers = []
 
@@ -2028,8 +2028,8 @@ def puma_trips_route():
         
         if 'truck_reg' in active_rows.columns:
             busy_trucks.update(active_rows['truck_reg'].dropna().astype(str).str.strip().tolist())
-        if 'driver_name' in active_rows.columns:
-            busy_drivers.update(active_rows['driver_name'].dropna().astype(str).str.strip().tolist())
+        if 'driver' in active_rows.columns:
+            busy_drivers.update(active_rows['driver'].dropna().astype(str).str.strip().tolist())
 
     # Scan all 3 operations matrices
     extract_busy_units(engen_df)
@@ -2074,13 +2074,13 @@ def delete_puma_order(order_number):
             # Load the current list
             df = pd.read_csv(file_path)
             
-            # Keep everything EXCEPT the row matching the target puma_order_number
+            # Keep everything EXCEPT the row matching the target order_number
             # Cast column to string to match any text variations smoothly
-            df['puma_order_number'] = df['puma_order_number'].astype(str).str.strip()
+            df['order_number'] = df['order_number'].astype(str).str.strip()
             clean_order_number = str(order_number).strip()
             
             # Filter row out
-            filtered_df = df[df['puma_order_number'] != clean_order_number]
+            filtered_df = df[df['order_number'] != clean_order_number]
             
             # Save it back to storage
             filtered_df.to_csv(file_path, index=False)
@@ -2315,7 +2315,7 @@ def bto_manager():
     date_cols = [col for col in df.columns if 'Date' in col or 'Exp' in col or 'procedure' in col]
 
     for _, row in df.iterrows():
-        driver_name = row['NAME/SURNAME']
+        driver = row['driver']
         driver_docs = []
 
         # Inside your bto_manager loop in app.py:
@@ -2350,7 +2350,7 @@ def bto_manager():
         if driver_docs:
             # SORTING LOGIC: Sort by 'days' key ascending (lowest days first)
             driver_docs.sort(key=lambda x: x['days'])
-            grouped_alerts[driver_name] = driver_docs
+            grouped_alerts[driver] = driver_docs
 
     drivers_list = df.to_dict(orient='records')
     return render_template('drivers/bto_manager.html', 
@@ -2417,11 +2417,11 @@ def fatigue_hours():
                 for row in reader:
                     # Capture type DRIVER and manage potential legacy/empty type definitions
                     if row.get("TYPE") == "DRIVER" or not row.get("TYPE"):
-                        name = row.get("NAME/SURNAME")
+                        name = row.get("driver")
                         if name:
-                            drivers_list.append({"NAME/SURNAME": name})
+                            drivers_list.append({"driver": name})
             # Prioritize clean display sequencing
-            drivers_list = sorted(drivers_list, key=lambda x: x["NAME/SURNAME"])
+            drivers_list = sorted(drivers_list, key=lambda x: x["driver"])
         except Exception as e:
             print(f"Error reading registry payload context: {e}")
 
@@ -2430,7 +2430,7 @@ def fatigue_hours():
         try:
             entry = {
                 "date": request.form.get("date"),
-                "driver_name": request.form.get("driver_name"),
+                "driver": request.form.get("driver"),
                 "customer": request.form.get("customer", "Other"),
                 "start_time": request.form.get("start_time"),
                 "end_time": request.form.get("end_time"),
@@ -2500,7 +2500,7 @@ def update_fatigue():
     for r in records:
         
             r["date"] = request.form.get("date")
-            r["driver_name"] = request.form.get("driver_name")
+            r["driver"] = request.form.get("driver")
             r["start_time"] = request.form.get("start_time")
             r["end_time"] = request.form.get("end_time")
             r["off_day"] = request.form.get("off_day")
@@ -2521,7 +2521,7 @@ def index():
 
 
 # Import or include your name normalizer helper to keep matching watertight
-def normalize_driver_name(name):
+def normalize_driver(name):
     if pd.isnull(name):
         return ""
     return str(name).strip().lower().replace("'", "").replace("`", "").replace(" ", "")
@@ -2529,7 +2529,7 @@ def normalize_driver_name(name):
 @app.route('/fatigue/update-driver', methods=['POST'])
 def update_driver():
     # 1. Gather incoming form inputs
-    posted_name = request.form.get('driver_name', '').strip()
+    posted_name = request.form.get('driver', '').strip()
     date_truck_taken = request.form.get('date_truck_taken', '').strip()
     date_off_taken = request.form.get('date_off_taken', '').strip()
     
@@ -2546,7 +2546,7 @@ def update_driver():
     df_roster = pd.read_csv(roster_csv).fillna('') if os.path.exists(roster_csv) else pd.DataFrame()
 
     # 4. Resolve the exact registry match to maintain structural integrity
-    registry_name_col = 'NAME/SURNAME' if 'NAME/SURNAME' in df_registry.columns else 'driver_name'
+    registry_name_col = 'driver' if 'driver' in df_registry.columns else 'driver'
     
     if df_registry.empty or registry_name_col not in df_registry.columns:
         flash("System Error: Master driver registry missing headers.", "danger")
@@ -2554,11 +2554,11 @@ def update_driver():
 
     # Match the incoming name using fuzzy logic against master registry records
     target_registry_name = None
-    normalized_posted = normalize_driver_name(posted_name)
+    normalized_posted = normalize_driver(posted_name)
     
     for _, row in df_registry.iterrows():
         reg_name = str(row[registry_name_col]).strip()
-        if normalize_driver_name(reg_name) == normalized_posted:
+        if normalize_driver(reg_name) == normalized_posted:
             target_registry_name = reg_name
             break
 
@@ -3606,7 +3606,7 @@ def get_toll_data(trip_row):
     # Loading your driver contact list (ensure you have this CSV)
     try:
         drivers_df = pd.read_csv('DATA/bto_registry.csv')
-        driver_info = drivers_df[drivers_df['name'] == trip_row['NAME/SURNAME']]
+        driver_info = drivers_df[drivers_df['name'] == trip_row['driver']]
         
         if not driver_info.empty:
             mpesa = driver_info.iloc[0].get('phone_number')
@@ -3639,17 +3639,17 @@ def mark_toll_paid():
             df['toll_paid'] = 'N'
             
         # Update the specific order
-        df.loc[df['puma_order_number'] == order_no, 'toll_paid'] = 'Y'
+        df.loc[df['order_number'] == order_no, 'toll_paid'] = 'Y'
         
         # Save back to CSV
         df.to_csv(trips_path, index=False)
         
     return redirect(url_for('toll_management'))
 
-def get_payment_number(driver_name):
+def get_payment_number(driver):
     # Load your drivers CSV
     drivers_df = pd.read_csv('DATA/bto_registry.csv')
-    driver = drivers_df[drivers_df['name'] == 'NAME/SURNAME']
+    driver = drivers_df[drivers_df['name'] == 'driver']
     
     if not driver.empty:
         # Check M-Pesa first
@@ -3696,14 +3696,14 @@ def toll_management():
     processed_list = []
     for _, row in toll_trips.iterrows():
         # Mapping to your actual column names from the error message:
-        driver_name = str(row.get('driver_name', '')).strip()
+        driver = str(row.get('driver', '')).strip()
         truck_reg = str(row.get('truck_reg', '')).strip().upper()
         
         # Fee logic: SA registration (FS) gets 800, others get 440
         fee = 800 if truck_reg.endswith('FS') else 440
 
-        # Lookup in Registry using 'NAME/SURNAME'
-        driver_match = reg_df[reg_df['NAME/SURNAME'].str.strip() == driver_name]
+        # Lookup in Registry using 'driver'
+        driver_match = reg_df[reg_df['driver'].str.strip() == driver]
         
         payment_no = "No Number"
         if not driver_match.empty:
@@ -3716,11 +3716,11 @@ def toll_management():
                 payment_no = f"{str(int(float(eco)))} (EcoCash)"
 
         processed_list.append({
-            'date': row.get('loading_date'), # Using your 'loading_date' column
-            'driver': driver_name,
+            'date': row.get('date_loaded'), # Using your 'date_loaded' column
+            'driver': driver,
             'reg': truck_reg,
-            'order': row.get('puma_order_number'), # Using your order column
-            'site': row.get('discharge_point'), # This is the equivalent of Offloading Site
+            'order': row.get('order_number'), # Using your order column
+            'site': row.get('offloading_point'), # This is the equivalent of Offloading Site
             'payment_no': payment_no,
             'amount': fee,
             'paid': row.get('invoiced') == 'Y' # Using invoiced as a proxy for paid status
@@ -3936,7 +3936,7 @@ def trips():
     drivers_list = []
     if os.path.exists(DRIVERS_PATH):
         d_df = pd.read_csv(DRIVERS_PATH)
-        d_df = d_df[~d_df['NAME/SURNAME'].astype(str).str.title().isin(busy_drivers)]
+        d_df = d_df[~d_df['driver'].astype(str).str.title().isin(busy_drivers)]
         drivers_list = d_df.to_dict('records')
 
     # 7. FINALIZE FOR TEMPLATE
@@ -3984,8 +3984,8 @@ def generate_emptiness_cert(order_no):
         # 1. Identify Trip Record
         trip = None
         source = None
-        if order_no in puma_df['puma_order_number'].values:
-            trip = puma_df[puma_df['puma_order_number'] == order_no].iloc[0]
+        if order_no in puma_df['order_number'].values:
+            trip = puma_df[puma_df['order_number'] == order_no].iloc[0]
             source = 'PUMA'
         elif order_no in engen_df['order_number'].values:
             trip = engen_df[engen_df['order_number'] == order_no].iloc[0]
@@ -4025,7 +4025,7 @@ def generate_emptiness_cert(order_no):
         context = {
             'order_no': order_no,
             'date': datetime.now().strftime('%d/%m/%Y'),
-            'driver': trip.get('driver' if source == 'ENGEN' else 'driver_name', 'N/A'),
+            'driver': trip.get('driver' if source == 'ENGEN' else 'driver', 'N/A'),
             'truck': trip.get('truck_reg', 'N/A'),
             'trailer': trailer_reg,
             # Change your logo_path line to this:
@@ -4121,8 +4121,8 @@ def secondary_trips():
 
     try:
         df_r = pd.read_csv(REGISTRY_PATH)
-        if 'NAME/SURNAME' in df_r.columns:
-            df_r = df_r.drop_duplicates(subset=['NAME/SURNAME'])
+        if 'driver' in df_r.columns:
+            df_r = df_r.drop_duplicates(subset=['driver'])
         drivers = df_r.to_dict('records')
     except Exception:
         drivers = []
@@ -4154,7 +4154,7 @@ def save_multi_drop_trip():
     if not stops:
         return jsonify({"status": "error", "message": "At least one stop manifest component must be provided."}), 400
 
-    generated_trip_id = f"{str(header.get('truck_reg')).replace(' ', '')}_{int(time.time())}"
+    
     
     try:
         df = pd.read_csv(CSV_PATH)
@@ -4172,16 +4172,16 @@ def save_multi_drop_trip():
         diff_km = e_km - s_km if e_km > 0 else 0.0
 
         row = {
-            'trip_id': generated_trip_id,
+            'trip_id': header.get('date_loaded'),
             'date_loaded': header.get('date_loaded'),
             'order_number': stop.get('order_number'),
-            'customer': stop.get('offloading_point'),
+            'customer': stop.get('customer', 'ENGEN'),
             'product': stop.get('product'),
             'truck_reg': header.get('truck_reg'),
             'trailer_reg': header.get('trailer_reg'),
             'driver': header.get('driver'),
             'status': stop.get('status', 'IN TRANSIT'),
-            'loading_point': header.get('loading_point', 'WALTLOO'),
+            'loading_point': header.get('loading_point', ''),
             'litres_loaded': l_load,
             'loading_km': s_km,
             'position': stop.get('offloading_point'),
@@ -4400,8 +4400,8 @@ def get_registry_drivers():
             reader = csv.DictReader(f)
             for row in reader:
                 if row.get('TYPE') == 'DRIVER' or not row.get('TYPE'):
-                    drivers.append({'NAME/SURNAME': row.get('NAME/SURNAME', 'Unknown')})
-    return sorted(drivers, key=lambda x: x['NAME/SURNAME'])
+                    drivers.append({'driver': row.get('driver', 'Unknown')})
+    return sorted(drivers, key=lambda x: x['driver'])
 
 # --- HELPER: Load Trucks from vehicles.csv ---
 def get_vehicles():
@@ -4423,7 +4423,7 @@ def load_tyres():
 
 def save_tyres(tyres):
     fields = ["serial_no", "size", "brand", "purchase_date", "cost", "supplier", "status", 
-              "truck_reg", "position", "km_fitted", "driver_name", "installer", 
+              "truck_reg", "position", "km_fitted", "driver", "installer", 
               "km_removed", "removal_reason", "disposition", "total_km"]
     with open('tyres.csv', mode='w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fields)
@@ -4453,7 +4453,7 @@ def buy_tyre():
         "truck_reg": "", 
         "position": "", 
         "km_fitted": "", 
-        "driver_name": "", 
+        "driver": "", 
         "installer": "", 
         "km_removed": "",
         "removal_reason": "", 
@@ -4500,7 +4500,7 @@ def fit_tyre():
                 "truck_reg": request.form.get("truck_reg"),
                 "position": request.form.get("position"),
                 "km_fitted": request.form.get("km_fitted"),
-                "driver_name": request.form.get("driver_name"),
+                "driver": request.form.get("driver"),
                 "installer": request.form.get("installer")
             })
     save_tyres(tyres)
@@ -4590,11 +4590,11 @@ def driver_loads():
                 product_val = ''
                 trip_id_key = None
             elif source_type == 'PUMA':
-                raw_driver = str(row.get('driver_name', 'Unknown Driver')).strip()
-                date_val = row.get('date', row.get('loading_date')) # fallback checking
-                order_num = row.get('trip_id', row.get('puma_order_number', 'N/A'))
-                load_pnt = row.get('load_point', 'N/A')
-                off_pnt = row.get('discharge_point', 'N/A')
+                raw_driver = str(row.get('driver', 'Unknown Driver')).strip()
+                date_val = row.get('date', row.get('date_loaded')) # fallback checking
+                order_num = row.get('trip_id', row.get('order_number', 'N/A'))
+                load_pnt = row.get('loading_point', 'N/A')
+                off_pnt = row.get('offloading_point', 'N/A')
                 truck = row.get('truck_reg', 'N/A')
                 product_val = ''
                 trip_id_key = None
@@ -4867,29 +4867,146 @@ EMAIL_PASS = "nptg tfpp zwfz kmlb"
 RECEIVER_EMAIL = ["operations@smsfuel.co.za", "info@smsfuel.co.za"]
 
 def get_allowance_df():
-    df_trips = pd.read_csv('DATA/trips.csv')
-    df_rates = pd.read_csv('DATA/rates.csv')
-
-    # Ensure indices are clean
-    df_trips['original_index'] = df_trips.index.astype(int)
-
-    # Standardize Status
-    df_trips['allowance_status'] = df_trips['allowance_status'].fillna('PENDING').astype(str).str.upper()
-
-    # Create cleaning keys
-    df_trips['t_load'] = df_trips['loading_point'].astype(str).str.strip().str.upper()
-    df_trips['t_off'] = df_trips['offloading_point'].astype(str).str.strip().str.upper()
-    df_rates['t_load'] = df_rates['loading_point'].astype(str).str.strip().str.upper()
-    df_rates['t_off'] = df_rates['offloading_point'].astype(str).str.strip().str.upper()
-
-    # Merge
-    df = pd.merge(df_trips, df_rates[['t_load', 't_off', 'food_allowance']].drop_duplicates(), 
-                  on=['t_load', 't_off'], how='left')
+    files = {
+        'trips.csv': 'DATA/trips.csv',
+        'puma_trips.csv': 'DATA/puma_trips.csv',
+        'secondary_trips.csv': 'DATA/secondary_trips.csv'
+    }
     
-    df['food_allowance'] = pd.to_numeric(df['food_allowance'], errors='coerce').fillna(0)
-    df['original_index'] = df['original_index'].astype(int)
+    dfs = []
+    for name, path in files.items():
+        if os.path.exists(path):
+            df_temp = pd.read_csv(path)
+            df_temp['source_file'] = name
+            df_temp['original_index'] = df_temp.index
+            dfs.append(df_temp)
+    
+    if not dfs: return pd.DataFrame()
+    df = pd.concat(dfs, ignore_index=True)
+
+    # 1. Clean Column Names (Removes accidental spaces like ' region ' -> 'region')
+    df.columns = df.columns.str.strip().str.lower()
+
+    # 2. Defensive check for 'region'
+    if 'region' not in df.columns:
+        print("DEBUG: 'region' column missing. Adding default 'MASERU'.")
+        df['region'] = 'MASERU'
+    else:
+        df['region'] = df['region'].fillna('MASERU').astype(str).str.strip().str.upper()
+
+    # 3. Clean other columns
+    df['loading_point'] = df['loading_point'].astype(str).str.strip().str.upper()
+    df['offloading_point'] = df['offloading_point'].astype(str).str.strip().str.upper()
+    df['allowance_status'] = df['allowance_status'].fillna('PENDING').astype(str).str.upper()
+
+    # 4. Load Rates
+    df_rates = pd.read_csv('DATA/region_rates.csv')
+    df_rates.columns = df_rates.columns.str.strip().str.lower()
+
+    # 5. Determine Trip Type
+    def get_type(row):
+        load = str(row.get('loading_point', '')).upper()
+        off = str(row.get('offloading_point', '')).upper()
+        dn = str(row.get('delivery_note', '')).upper()
+        if "MASERU" in load and "MASERU" in off: return "BRIDGING"
+        if "MASERU" in load and "DIRECT" in dn: return "DIRECT"
+        if "MASERU" in load: return "LOCAL"
+        if "PUMA DEPOT" in off: return "BRIDGING"
+        return "DIRECT"
+
+    df['trip_type'] = df.apply(get_type, axis=1)
+
+    # 6. Merge
+    df = pd.merge(df, df_rates, left_on=['region', 'trip_type'], right_on=['region', 'load_type'], how='left')
+    
+# After merging and calculating, add this:
+    # If trip_id is missing, use supplier_order_number, otherwise use trip_id
+    df['display_ref'] = df['trip_id'].fillna(df['supplier_order_number'])
+    
+    # Optional: Fill any remaining empty spots with a placeholder if both are missing
+    df['display_ref'] = df['display_ref'].replace(['nan', ''], 'N/A')
+    
+    
+
+    # 7. Final Math
+    df['food_allowance'] = df['allowance'].fillna(0) + df['additional_allowance'].fillna(0)
     
     return df
+
+from flask import send_file
+def get_clean_report_df():
+    df = get_allowance_df()
+    # Ensure the combined reference column exists
+    df['display_ref'] = df['trip_id'].fillna(df['supplier_order_number'])
+    
+    # Select and rename columns for the report
+    report_df = df[[
+        'driver', 'date_loaded', 'order_number', 'display_ref', 
+        'customer', 'loading_point', 'offloading_point', 'truck_reg', 'food_allowance'
+    ]].copy()
+    
+    report_df.columns = [
+        'Driver', 'Date Loaded', 'Order Number', 'Trip ID / Supplier Order', 
+        'Customer', 'Loading Point', 'Offloading Point', 'Truck', 'Amount'
+    ]
+    
+    # Combine Loading/Offloading into a single 'Route' column
+    report_df['Route'] = report_df['Loading Point'] + " → " + report_df['Offloading Point']
+    
+    # Final selection:
+    final_df = report_df[['Driver', 'Date Loaded', 'Order Number', 'Trip ID / Supplier Order', 
+                          'Customer', 'Route', 'Truck', 'Amount']]
+    return final_df
+
+@app.route('/driver/export/excel')
+@login_required
+def export_excel():
+    df = get_clean_report_df()
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Allowance Report')
+    output.seek(0)
+    return send_file(output, download_name="Allowance_Report.xlsx", as_attachment=True)
+
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+
+@app.route('/driver/export/pdf')
+@login_required
+def export_pdf():
+    # 1. Get the cleaned data
+    df = get_clean_report_df()
+    
+    # 2. Setup PDF (Landscape is better for 8 columns)
+    output = io.BytesIO()
+    doc = SimpleDocTemplate(output, pagesize=landscape(A4))
+    elements = []
+    
+    # 3. Convert DataFrame to List of Lists for ReportLab
+    # Include headers
+    data = [df.columns.tolist()] + df.values.tolist()
+    
+    # 4. Create Table and apply styling
+    table = Table(data, repeatRows=1) # repeatRows ensures header stays on every page
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#343a40')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTSIZE', (0, 1), (-1, -1), 8), # Smaller font for rows to fit 8 columns
+    ])
+    table.setStyle(style)
+    elements.append(table)
+    
+    # 5. Build and Return
+    doc.build(elements)
+    output.seek(0)
+    return send_file(output, download_name="Allowance_Report.pdf", as_attachment=True)
 
 def send_allowance_email(df_to_send):
     # 1. Create the CSV attachment (as you had before)
@@ -4967,119 +5084,143 @@ def driver_allowance():
 @app.route('/driver/request_allowance', methods=['POST'])
 @login_required
 def request_allowance():
-    # 1. Load data
-    try:
-        df_trips = pd.read_csv('DATA/trips.csv')
-        df_rates = pd.read_csv('DATA/rates.csv')
-    except Exception as e:
-        flash(f"System Error: Could not load files. {e}", "danger")
-        return redirect('/driver/allowance')
-
-    # 2. Standardize column names (strip spaces, lowercase)
-    df_trips.columns = df_trips.columns.str.strip().str.lower()
+    file_list = ['DATA/trips.csv', 'DATA/puma_trips.csv', 'DATA/secondary_trips.csv']
+    df_rates = pd.read_csv('DATA/rates.csv')
     df_rates.columns = df_rates.columns.str.strip().str.lower()
-
-    # 3. Clean statuses for filtering
-    df_trips['allowance_status'] = df_trips['allowance_status'].fillna('pending').astype(str).str.strip().str.lower()
-
-    # 4. Filter for PENDING trips
-    mask = (df_trips['allowance_status'] == 'pending')
     
-    # Debug: Check if mask actually finds anything
-    if not mask.any():
-        flash(f"No pending allowances found. Current statuses in file: {df_trips['allowance_status'].unique()}", "warning")
+    all_pending = []
+    
+    # 1. Load and Standardize
+    for file_path in file_list:
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            df.columns = df.columns.str.strip().str.lower()
+            
+            # --- THE FIX: Force the column to be a string type ---
+            if 'allowance_status' in df.columns:
+                df['allowance_status'] = df['allowance_status'].astype(str)
+            else:
+                df['allowance_status'] = 'pending'
+            
+            df['allowance_status'] = df['allowance_status'].fillna('pending').str.lower()
+            
+            pending = df[df['allowance_status'] == 'pending'].copy()
+            pending['source_file'] = file_path 
+            pending['original_index'] = df.index 
+            all_pending.append(pending)
+            
+    if not all_pending:
+        flash("No pending allowances found.", "warning")
         return redirect('/driver/allowance')
 
-    # 5. Create matching keys to merge with rates.csv
+    to_request = pd.concat(all_pending, ignore_index=True)
     
-    df_trips['t_load'] = df_trips['loading_point'].astype(str).str.strip().str.upper()
-    df_trips['t_off'] = df_trips['offloading_point'].astype(str).str.strip().str.upper()
+    # 2. Merge for allowance
+    to_request['t_load'] = to_request['loading_point'].astype(str).str.strip().str.upper()
+    to_request['t_off'] = to_request['offloading_point'].astype(str).str.strip().str.upper()
     df_rates['t_load'] = df_rates['loading_point'].astype(str).str.strip().str.upper()
     df_rates['t_off'] = df_rates['offloading_point'].astype(str).str.strip().str.upper()
-
-    # 6. Merge to get food_allowance
-    to_request = pd.merge(df_trips[mask], 
-                          df_rates[['t_load', 't_off', 'food_allowance']].drop_duplicates(), 
+    
+    to_request = pd.merge(to_request, df_rates[['t_load', 't_off', 'food_allowance']].drop_duplicates(), 
                           on=['t_load', 't_off'], how='left')
 
-    # 7. Prepare specific email data
+    # 3. Prepare Email - ONLY use columns that exist
     try:
+        # Create a clean subset for the email
         df_email = pd.DataFrame()
         df_email['Driver'] = to_request['driver']
         df_email['Date'] = to_request['date_loaded']
-        df_email['Order'] = to_request['order_number']
+        # Use .get to prevent KeyError if column is missing
+        df_email['Order'] = to_request.get('order_number', to_request.get('trip_id', 'N/A'))
         df_email['Route'] = to_request['loading_point'].astype(str) + " → " + to_request['offloading_point'].astype(str)
-        # Handle cases where allowance might be NaN (fill with 0)
         df_email['Amount'] = to_request['food_allowance'].fillna(0).apply(lambda x: "{:,.2f}".format(float(x)))
         
-        # 8. Send Email
         send_allowance_email(df_email)
         
-        # 9. If success, log to history and update trips.csv
-        request_file = 'DATA/requested_food_allowance.csv'
-        file_exists = os.path.exists(request_file)
-        to_request.to_csv(request_file, mode='a', header=not file_exists, index=False)
-
-        # Update original trips status to REQUESTED
-        df_trips.loc[mask, 'allowance_status'] = 'requested'
-        df_trips.to_csv('DATA/trips.csv', index=False)
-
-        flash(f"Success! {len(to_request)} allowance(s) requested and emailed.", "success")
+        # 4. Update Files safely
+        for file_path in file_list:
+            if os.path.exists(file_path):
+                # --- FIX: Read the file, explicitly forcing allowance_status to string ---
+                df_orig = pd.read_csv(file_path, dtype={'allowance_status': str})
+                df_orig.columns = df_orig.columns.str.strip().str.lower()
+                
+                # Double check conversion
+                if 'allowance_status' not in df_orig.columns:
+                    df_orig['allowance_status'] = 'pending'
+                else:
+                    df_orig['allowance_status'] = df_orig['allowance_status'].astype(str)
+                
+                # Now update the status
+                file_mask = (to_request['source_file'] == file_path)
+                indices_to_update = to_request[file_mask]['original_index'].tolist()
+                
+                if indices_to_update:
+                    df_orig.loc[indices_to_update, 'allowance_status'] = 'requested'
+                    df_orig.to_csv(file_path, index=False)
+        flash(f"Success! {len(to_request)} allowances requested.", "success")
         
     except Exception as e:
-        flash(f"Email failed: {str(e)}. No statuses were updated.", "danger")
+        # Print full error to console for you to see
+        import traceback
+        traceback.print_exc() 
+        flash(f"Email failed: {str(e)}", "danger")
 
     return redirect('/driver/allowance')
     
 # --- 1. MARK SINGLE ENTRY PAID ---
 @app.route('/driver/mark_single_paid/<int:idx>', methods=['POST'])
+@login_required
 def mark_single_paid(idx):
-    df_trips = pd.read_csv('DATA/trips.csv')
+    source_file = request.form.get('source_file')
     ref = request.form.get('payment_ref', 'N/A')
     
-    # We use .index to check if the idx exists
-    if idx in df_trips.index:
-        # Create the archive row
-        row = df_trips.loc[[idx]].copy()
-        row['payment_ref'] = ref
-        row['paid_at'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')
+    if os.path.exists(source_file):
+        df = pd.read_csv(source_file)
         
-        # Save to Archive
-        row.to_csv('DATA/paid_food_allowance.csv', mode='a', index=False, 
-                   header=not os.path.exists('DATA/paid_food_allowance.csv'))
-        
-        # Update original file
-        df_trips.at[idx, 'allowance_status'] = 'PAID'
-        df_trips.to_csv('DATA/trips.csv', index=False)
-        
-        flash(f"Payment recorded for row {idx} with Ref: {ref}", "success")
-    else:
-        flash(f"Error: Row index {idx} not found in trips.csv", "danger")
-        
+        if idx in df.index:
+            # Archive it
+            row = df.loc[[idx]].copy()
+            row['payment_ref'] = ref
+            row['paid_at'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')
+            row.to_csv('DATA/paid_food_allowance.csv', mode='a', 
+                       header=not os.path.exists('DATA/paid_food_allowance.csv'), index=False)
+            
+            # Update status
+            df.at[idx, 'allowance_status'] = 'PAID'
+            df.to_csv(source_file, index=False)
+            flash(f"Payment recorded in {os.path.basename(source_file)}", "success")
+        else:
+            flash("Error: Index not found in source file.", "danger")
     return redirect('/driver/allowance')
 
 # --- 2. MARK ALL REQUESTED AS PAID (BULK) ---
 @app.route('/driver/mark_all_paid', methods=['POST'])
+@login_required
 def mark_all_paid():
-    df_trips = pd.read_csv('DATA/trips.csv')
+    file_list = ['DATA/trips.csv', 'DATA/puma_trips.csv', 'DATA/secondary_trips.csv']
     batch_ref = request.form.get('batch_ref', 'BATCH_PAY')
 
-    mask = df_trips['allowance_status'].astype(str).str.upper() == 'REQUESTED'
-    to_pay = df_trips[mask].copy()
-
-    if not to_pay.empty:
-        to_pay['payment_reference'] = batch_ref
-        to_pay['payment_date'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')
-
-        # Save to Archive
-        to_pay.to_csv('DATA/paid_food_allowance.csv', mode='a', 
-                      header=not os.path.exists('DATA/paid_food_allowance.csv'), index=False)
-
-        # Update Main File
-        df_trips.loc[mask, 'allowance_status'] = 'PAID'
-        df_trips.to_csv('DATA/trips.csv', index=False)
-        flash(f"Successfully marked all as PAID (Ref: {batch_ref})", "success")
-    
+    for file_path in file_list:
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            # Ensure status is string and case-insensitive
+            df['allowance_status'] = df['allowance_status'].astype(str).str.lower()
+            
+            mask = (df['allowance_status'] == 'requested')
+            if mask.any():
+                to_pay = df[mask].copy()
+                to_pay['payment_reference'] = batch_ref
+                to_pay['payment_date'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')
+                
+                # Archive
+                to_pay.to_csv('DATA/paid_food_allowance.csv', mode='a', 
+                              header=not os.path.exists('DATA/paid_food_allowance.csv'), index=False)
+                
+                # Update
+                df.loc[mask, 'allowance_status'] = 'PAID'
+                df.to_csv(file_path, index=False)
+                
+    flash(f"Successfully processed all requests.", "success")
     return redirect('/driver/allowance')
 # -------------------- DOCUMENTS --------------------
 

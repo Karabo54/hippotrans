@@ -6,7 +6,7 @@
 <form method="POST">
   <div class="form-grid">
     <input type="date" name="date" value="{{ entry.date }}" required>
-    <input type="text" name="driver_name" value="{{ entry.driver_name }}" required>
+    <input type="text" name="driver" value="{{ entry.driver }}" required>
     <select name="off_day">
       <option value="no" {% if entry.off_day == "no" %}selected{% endif %}>Working Day</option>
       <option value="yes" {% if entry.off_day == "yes" %}selected{% endif %}>Off Day</option>

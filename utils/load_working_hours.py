@@ -21,7 +21,7 @@ def load_working_hours():
     return records
 
 def save_working_hours(records):
-    fieldnames = ["date", "driver_name", "start_time", "end_time", "off_day", "after_hours_reason"]
+    fieldnames = ["date", "driver", "start_time", "end_time", "off_day", "after_hours_reason"]
     with open(WORK_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -75,7 +75,7 @@ def summarize_by_driver_month(records):
     for r in records:
         if r["off_day"].lower() == "yes":
             continue
-        key = (r["driver_name"], r["date"][:7])
+        key = (r["driver"], r["date"][:7])
         summary[key]["total_hours"] += r["hours_worked"]
         summary[key]["days_worked"] += 1
         if r["violation"]:
@@ -87,7 +87,7 @@ def group_by_year_month_driver(records):
     for r in records:
         year = r["date"][:4]
         month = r["date"][:7]
-        driver = r["driver_name"]
+        driver = r["driver"]
         structure[year][month][driver].append(r)
     return structure
 
@@ -107,7 +107,7 @@ def load_roster():
     return records
 
 def save_roster(records):
-    fieldnames = ["driver_name", "last_off_date", "off_cycle_days"]
+    fieldnames = ["driver", "last_off_date", "off_cycle_days"]
     with open(ROSTER_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -125,7 +125,7 @@ def get_roster_status():
         days_left = (next_off - today).days
 
         status.append({
-            "driver_name": r["driver_name"],
+            "driver": r["driver"],
             "last_off_date": r["last_off_date"],
             "off_cycle_days": cycle,
             "next_off_date": next_off.strftime("%Y-%m-%d"),

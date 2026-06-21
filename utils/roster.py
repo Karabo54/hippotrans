@@ -36,7 +36,7 @@ def calculate_cycle_days_home(date_off_taken, start_cycle, end_cycle):
         return 0
     return max(0, (actual_end - actual_start).days)
 
-def normalize_driver_name(name):
+def normalize_driver(name):
     """
     Normalizes names to fix string matching bugs (e.g. Ts'ilo vs Tsilo).
     """
@@ -61,10 +61,10 @@ def process_advanced_roster_data():
     # Dynamic adaptation to your actual CSV header structure
     registry_name_col = None
     if not df_registry.empty:
-        if 'NAME/SURNAME' in df_registry.columns:
-            registry_name_col = 'NAME/SURNAME'
-        elif 'driver_name' in df_registry.columns:
-            registry_name_col = 'driver_name'
+        if 'driver' in df_registry.columns:
+            registry_name_col = 'driver'
+        elif 'driver' in df_registry.columns:
+            registry_name_col = 'driver'
 
     if df_registry.empty or not registry_name_col:
         return [], {'ratio_status': 'UNKNOWN', 'msg': 'Driver column not found in bto_registry.csv.'}
@@ -80,7 +80,7 @@ def process_advanced_roster_data():
     rates_map = {}
     if not df_rates.empty:
         for _, r in df_rates.iterrows():
-            key = (str(r.get('loading_point', '')).strip().upper(), str(r.get('discharge_point', '')).strip().upper())
+            key = (str(r.get('loading_point', '')).strip().upper(), str(r.get('offloading_point', '')).strip().upper())
             rates_map[key] = float(r.get('base_weight', 1.0))
 
     # Initialize weights tracking using the correctly mapped master registry rows
@@ -91,24 +91,24 @@ def process_advanced_roster_data():
         orig_name = str(row[registry_name_col]).strip()
         if not orig_name:
             continue
-        norm_name = normalize_driver_name(orig_name)
+        norm_name = normalize_driver(orig_name)
         driver_weighted_loads[orig_name] = 0.0
         normalized_registry_map[norm_name] = orig_name
 
     tracked_active_trucks = set()
 
-    def parse_and_accumulate_trip(driver, load_point, discharge_point, date_val, truck):
+    def parse_and_accumulate_trip(driver, loading_point, offloading_point, date_val, truck):
         if pd.isnull(date_val) or not driver:
             return
         date_dt = pd.to_datetime(date_val, errors='coerce')
         if pd.notnull(date_dt) and (start_cycle <= date_dt.replace(tzinfo=None) <= end_cycle):
-            log_driver_norm = normalize_driver_name(driver)
+            log_driver_norm = normalize_driver(driver)
             
             # Match logs against master records using the fuzzy registry map
             if log_driver_norm in normalized_registry_map:
                 real_registry_name = normalized_registry_map[log_driver_norm]
-                lp = str(load_point).strip().upper()
-                dp = str(discharge_point).strip().upper()
+                lp = str(loading_point).strip().upper()
+                dp = str(offloading_point).strip().upper()
                 
                 weight = rates_map.get((lp, dp), rates_map.get(('', dp), 1.0))
                 driver_weighted_loads[real_registry_name] += weight
@@ -120,7 +120,7 @@ def process_advanced_roster_data():
     if os.path.exists(puma_csv):
         df_p = pd.read_csv(puma_csv)
         for _, row in df_p.iterrows():
-            parse_and_accumulate_trip(row.get('driver_name'), row.get('load_point'), row.get('discharge_point'), row.get('loading_date'), row.get('truck_reg'))
+            parse_and_accumulate_trip(row.get('driver'), row.get('loading_point'), row.get('offloading_point'), row.get('date_loaded'), row.get('truck_reg'))
 
     if os.path.exists(secondary_csv):
         df_s = pd.read_csv(secondary_csv)
@@ -142,8 +142,8 @@ def process_advanced_roster_data():
     roster_list = []
     roster_map = df_roster.set_index('driver').to_dict('index') if not df_roster.empty else {}
 
-    for original_driver_name in driver_weighted_loads.keys():
-        rost_data = roster_map.get(original_driver_name, {})
+    for original_driver in driver_weighted_loads.keys():
+        rost_data = roster_map.get(original_driver, {})
         
         dt_truck = rost_data.get('date_truck_taken', pd.NaT)
         dt_off = rost_data.get('date_off_taken', pd.NaT)
@@ -152,10 +152,10 @@ def process_advanced_roster_data():
         days_home_total = max(0, (today - dt_off.replace(tzinfo=None)).days) if pd.notnull(dt_off) else 0
         days_home_in_cycle = calculate_cycle_days_home(dt_off, start_cycle, end_cycle)
         
-        weighted_score = driver_weighted_loads.get(original_driver_name, 0.0)
+        weighted_score = driver_weighted_loads.get(original_driver, 0.0)
 
         roster_list.append({
-            'driver': original_driver_name,
+            'driver': original_driver,
             'date_truck_taken': dt_truck.strftime('%Y-%m-%d') if pd.notnull(dt_truck) else "",
             'date_off_taken': dt_off.strftime('%Y-%m-%d') if pd.notnull(dt_off) else "",
             'number_of_days_at_work': days_at_work,

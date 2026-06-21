@@ -73,7 +73,7 @@ def analyze_fuel_intelligence():
     # 4. Process Every Fuel Log
     for log in logs:
         reg = log.get('truck_reg')
-        driver_name = log.get('driver', 'Unknown')
+        driver = log.get('driver', 'Unknown')
         litres = float(log.get('litres') or 0)
         km_curr = float(log.get('km_at_fuel') or 0)
         curr_date = log.get('date') or log.get('date_loaded')
@@ -95,8 +95,8 @@ def analyze_fuel_intelligence():
                 # Accumulate Stats
                 stats['trucks'][reg]['km'] += dist_since_last_fill
                 stats['trucks'][reg]['litres'] += litres
-                stats['drivers'][driver_name]['km'] += dist_since_last_fill
-                stats['drivers'][driver_name]['litres'] += litres
+                stats['drivers'][driver]['km'] += dist_since_last_fill
+                stats['drivers'][driver]['litres'] += litres
                 
                 # Odometer Gap Detection (Alerts)
                 if dist_since_last_fill > 2500:
@@ -107,7 +107,7 @@ def analyze_fuel_intelligence():
                         'start_date': prev_data['date'], # From previous log
                         'end_date': curr_date,           # From current log
                         'prev_driver': prev_data['driver'],
-                        'next_driver': driver_name
+                        'next_driver': driver
                     })
             else:
                 log['calculated_efficiency'] = None
@@ -120,7 +120,7 @@ def analyze_fuel_intelligence():
         previous_log[reg] = {
             'km': km_curr,
             'date': curr_date,
-            'driver': driver_name
+            'driver': driver
         }
 
     # 5. Finalize Averages

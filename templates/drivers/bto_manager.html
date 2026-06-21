@@ -190,7 +190,7 @@
             <tr onclick='openEditModal({{ d|tojson | safe }})'>
                 <td>
                     <a href="/driver/profile/{{ d['bto_id'] }}" class="text-primary font-weight-bold">
-                        {{ d['NAME/SURNAME'] }}
+                        {{ d['driver'] }}
                     </a>
                 </td>
                 <td>
@@ -210,10 +210,10 @@
     <h3 style="color: #0d47a1; margin-bottom: 20px;">⚠️ Driver Compliance Alerts (Next 60 Days)</h3>
     
     <div class="alert-grid">
-        {% for driver_name, docs in alerts.items() %}
+        {% for driver, docs in alerts.items() %}
         <div class="alert-card">
             <div class="alert-card-header">
-                <span>👤 {{ driver_name }}</span>
+                <span>👤 {{ driver }}</span>
                 <span class="alert-count">⚠️ No.of Docs  {{ docs|length }}</span>
             </div>
             <div class="alert-card-body">
@@ -258,7 +258,7 @@
             <input type="hidden" name="is_edit" id="f_edit">
 
             <div id="tab1" class="tab-content">
-                <div class="form-group"><label>Name/Surname</label><input type="text" name="NAME/SURNAME" id="f_name" required></div>
+                <div class="form-group"><label>driver</label><input type="text" name="driver" id="f_name" required></div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div class="form-group"><label>Lesotho (VCL)</label><input type="text" name="phone_number" id="f_phone" placeholder="5xxxxxxx"></div>
@@ -334,11 +334,11 @@
     }
 
     function openEditModal(data) {
-        document.getElementById('modalTitle').innerText = "Edit: " + data['NAME/SURNAME'];
+        document.getElementById('modalTitle').innerText = "Edit: " + data['driver'];
         document.getElementById('f_edit').value = "true";
         document.getElementById('f_id').value = data.bto_id;
 
-        document.getElementById('f_name').value = data['NAME/SURNAME'] || '';
+        document.getElementById('f_name').value = data['driver'] || '';
         document.getElementById('f_idno').value = data['ID NO'] || '';
         document.getElementById('f_passport').value = data['passport_number'] || '';
         document.getElementById('f_phone').value = data['phone_number'] || '';
